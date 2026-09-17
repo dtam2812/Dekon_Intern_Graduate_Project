@@ -10,7 +10,6 @@ import { CreateUserDto } from 'src/dto/create-user.dto';
 import { UpdateUserDto } from 'src/dto/update-user.dto';
 import { UserResponseDto } from 'src/dto/user-response.dto';
 import { AuthProvider } from 'src/enum/authProvider.enum';
-import { UserRole } from 'src/enum/userRole.enum';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { hashPassword } from 'src/service/PasswordHashing';
 
@@ -45,7 +44,7 @@ export class UserService {
       return user.toJSON() as UserResponseDto;
     } catch (error) {
       if (error.code === 11000) {
-        throw new ConflictException('This emial has been used');
+        throw new ConflictException('This email has been used');
       }
       throw error;
     }
