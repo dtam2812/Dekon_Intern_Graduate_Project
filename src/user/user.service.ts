@@ -7,10 +7,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateUserDto } from 'src/dto/create-user.dto';
+import { UpdateUserAdminDto } from 'src/dto/update-user-admin.dto';
 import { UpdateUserDto } from 'src/dto/update-user.dto';
 import { UserResponseDto } from 'src/dto/user-response.dto';
 import { AuthProvider } from 'src/enum/authProvider.enum';
-import { UserRole } from 'src/enum/userRole.enum';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { hashPassword } from 'src/service/PasswordHashing';
 
@@ -45,7 +45,7 @@ export class UserService {
       return user.toJSON() as UserResponseDto;
     } catch (error) {
       if (error.code === 11000) {
-        throw new ConflictException('This emial has been used');
+        throw new ConflictException('This email has been used');
       }
       throw error;
     }
@@ -71,6 +71,27 @@ export class UserService {
     dto: UpdateUserDto,
   ): Promise<UserResponseDto | null> {
     const updatedData: Partial<UpdateUserDto> = { ...dto };
+
+    if (dto.password) {
+      updatedData.password = await hashPassword(dto.password);
+    }
+
+    const user = await this.userModel.findByIdAndUpdate(id, updatedData, {
+      new: true,
+    });
+
+    if (!user) {
+      throw new NotFoundException('user not found');
+    }
+
+    return user.toJSON() as UserResponseDto;
+  }
+
+  async updateAdmin(
+    id: string,
+    dto: UpdateUserAdminDto,
+  ): Promise<UserResponseDto | null> {
+    const updatedData: Partial<UpdateUserAdminDto> = { ...dto };
 
     if (dto.password) {
       updatedData.password = await hashPassword(dto.password);
