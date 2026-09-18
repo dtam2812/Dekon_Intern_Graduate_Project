@@ -3,8 +3,8 @@ import { AuthService } from './auth.service';
 import { LogInUserDto } from 'src/dto/logIn-user.dto';
 import { RefreshTokenDto } from 'src/dto/refresh-token.dto';
 import { RegisterDto } from 'src/dto/register.dto';
-import { Public } from 'src/metadata/public.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { Public } from 'src/decorator/public.decorator';
 
 @Controller('auth')
 export class AuthController {
