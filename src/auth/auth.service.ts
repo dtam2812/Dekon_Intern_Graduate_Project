@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import {
   ConflictException,
   Injectable,
@@ -20,6 +23,7 @@ import { RefreshTokenDto } from 'src/dto/refresh-token.dto';
 import { RegisterDto } from 'src/dto/register.dto';
 import { UserRole } from 'src/enum/userRole.enum';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -196,5 +200,110 @@ export class AuthService {
     );
 
     return { message: 'Logged out successfully' };
+  }
+
+  async googleLogin(googleUser: { fullName: string; email: string }) {
+    const existedEmail = await this.userModel.findOne({
+      email: googleUser.email,
+    });
+
+    if (existedEmail && existedEmail.provider === AuthProvider.LOCAL) {
+      return this.creatingPendingLinkToken(existedEmail, googleUser);
+    }
+
+    let user: UserDocument | null;
+    try {
+      user = await this.userModel.findOneAndUpdate(
+        { email: googleUser.email },
+        {
+          $setOnInsert: {
+            fullName: googleUser.fullName,
+            email: googleUser.email,
+            role: UserRole.CUSTOMER,
+            provider: AuthProvider.GOOGLE,
+          },
+        },
+        { upsert: true, new: true },
+      );
+    } catch (error) {
+      if (error.code === 11000) {
+        user = await this.userModel.findOne({ email: googleUser.email });
+      } else {
+        throw error;
+      }
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const familyId = crypto.randomUUID();
+    return this.issueToken(
+      user.id,
+      user.email,
+      user.fullName,
+      user.role,
+      user.provider,
+      familyId,
+    );
+  }
+
+  private async creatingPendingLinkToken(
+    existedUser: UserDocument,
+    googleProfile: { email: string; fullName: string },
+  ) {
+    const pendingLinkToken = await this.jwtService.signAsync(
+      {
+        sub: existedUser.id,
+        purpose: 'google-link',
+        googleFullName: googleProfile.fullName,
+      },
+      {
+        expiresIn: '10m',
+      },
+    );
+
+    return { requireLinkConfirmation: true, pendingLinkToken };
+  }
+
+  async confirmLinkGoogleAccount(pendingLinkToken: string, password: string) {
+    let payload: { sub: string; purpose: string; googleFullName: string };
+
+    try {
+      payload = this.jwtService.verify(pendingLinkToken);
+    } catch (error) {
+      throw new UnauthorizedException('Link token invalid or expired');
+    }
+
+    if (payload.purpose !== 'google-link') {
+      throw new UnauthorizedException('Invalid token purpose');
+    }
+
+    const user = await this.userModel.findById(payload.sub).select('+password');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Password is required');
+    }
+
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    user.provider = AuthProvider.GOOGLE;
+    await user.save();
+
+    const familyId = crypto.randomUUID();
+    return this.issueToken(
+      user.id,
+      user.email,
+      user.fullName,
+      user.role,
+      user.provider,
+      familyId,
+    );
   }
 }

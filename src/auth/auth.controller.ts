@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LogInUserDto } from 'src/dto/logIn-user.dto';
 import { RefreshTokenDto } from 'src/dto/refresh-token.dto';
 import { RegisterDto } from 'src/dto/register.dto';
 import { Public } from 'src/metadata/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -40,5 +41,28 @@ export class AuthController {
   @Get('profile')
   getProfile(@Req() req: any) {
     return req.user;
+  }
+
+  @Public()
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  googleAuth() {}
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@Req() req: any) {
+    return this.authService.googleLogin(req.user);
+  }
+
+  @Public()
+  @Post('google/confirm-link')
+  async confirmLinkGoogleAccount(
+    @Body() dto: { pendingLinkToken: string; password: string },
+  ) {
+    return this.authService.confirmLinkGoogleAccount(
+      dto.pendingLinkToken,
+      dto.password,
+    );
   }
 }

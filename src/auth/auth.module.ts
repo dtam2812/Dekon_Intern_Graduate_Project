@@ -5,10 +5,11 @@ import { UserModule } from 'src/user/user.module';
 import { RefreshTokenModule } from 'src/refresh-token/refresh-token.module';
 import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
+import { GoogleStrategy } from 'src/strategies/google.strategy';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy],
   imports: [
     UserModule,
     RefreshTokenModule,
