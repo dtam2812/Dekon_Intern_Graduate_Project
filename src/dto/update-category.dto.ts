@@ -1,1 +1,11 @@
-export class UpdateCategoryDto {}
+import { IsString, IsOptional } from 'class-validator';
+
+export class UpdateCategoryDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  slug?: string;
+}

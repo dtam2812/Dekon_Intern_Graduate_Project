@@ -4,13 +4,22 @@ import type { priceHistory } from 'src/type/priceHistory.type';
 
 export type ProductDocument = HydratedDocument<Product>;
 
-@Schema()
+@Schema({
+  toJSON: {
+    versionKey: false,
+    transform: (doc, ret: any) => {
+      ret.id = ret._id.toString();
+      delete ret._id;
+      return ret;
+    },
+  },
+})
 export class Product {
   @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
   categoryId!: Types.ObjectId;
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   name!: string;
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   slug!: string;
   @Prop({ required: true })
   description!: string;
