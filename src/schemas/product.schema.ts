@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import type { priceHistory } from 'src/type/priceHistory.type';
+import { PriceHistory } from './priceHistory.schema';
 
 export type ProductDocument = HydratedDocument<Product>;
 
@@ -25,7 +26,7 @@ export class Product {
   description!: string;
   @Prop({ required: true })
   price!: number;
-  @Prop({ required: true })
+  @Prop({ type: [PriceHistory] })
   priceHistory!: priceHistory[];
   @Prop({ required: true })
   stock!: number;
