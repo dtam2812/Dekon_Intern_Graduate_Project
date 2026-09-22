@@ -10,6 +10,7 @@ import {
   UploadedFiles,
   Req,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from 'src/dto/create-product.dto';
@@ -22,6 +23,7 @@ import { Product } from 'src/schemas/product.schema';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { storageConfig } from 'src/helpers/config';
 import { extname } from 'path';
+import { FilterProductDto } from 'src/dto/filter-product.dto';
 
 @Controller('product')
 export class ProductController {
@@ -58,8 +60,8 @@ export class ProductController {
 
   @Public()
   @Get()
-  findAll(): Promise<Product[]> {
-    return this.productService.findAll();
+  findAll(@Query() query: FilterProductDto): Promise<any> {
+    return this.productService.findAll(query);
   }
 
   @Public()

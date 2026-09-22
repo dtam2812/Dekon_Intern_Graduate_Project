@@ -8,6 +8,7 @@ import {
   Min,
   IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -26,11 +27,13 @@ export class UpdateProductDto {
   @IsString()
   description?: string;
 
+  @Type(() => Number)
   @IsOptional()
   @IsNumber()
   @IsPositive()
   price?: number;
 
+  @Type(() => Number)
   @IsOptional()
   @IsNumber()
   @Min(0)

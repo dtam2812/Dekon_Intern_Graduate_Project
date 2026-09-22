@@ -8,6 +8,7 @@ import { unlink } from 'fs/promises';
 import { Model, UpdateQuery } from 'mongoose';
 import { join } from 'path';
 import { CreateProductDto } from 'src/dto/create-product.dto';
+import { FilterProductDto } from 'src/dto/filter-product.dto';
 import { UpdateProductDto } from 'src/dto/update-product.dto';
 import { Category, CategoryDocument } from 'src/schemas/category.schema';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
@@ -41,12 +42,12 @@ export class ProductService {
     files: Express.Multer.File[],
     id: string,
   ): Promise<Product> {
-    await this.assertCategoryExists(dto.categoryId);
     const fileUrls = files.map(
       (element) => `uploads/images/${element.filename}`,
     );
 
     try {
+      await this.assertCategoryExists(dto.categoryId);
       const product = await this.productModel.create({
         ...dto,
         images: fileUrls,
@@ -65,13 +66,43 @@ export class ProductService {
     }
   }
 
-  async findAll(): Promise<Product[]> {
-    const products = await this.productModel.find();
-    return products.map((element) => element.toJSON());
+  async findAll(query: FilterProductDto): Promise<any> {
+    const { page = 1, itemsPerPage = 10 } = query;
+    const skip = (page - 1) * itemsPerPage;
+
+    const filter: Record<string, any> = {};
+
+    const search = query.search?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' };
+    }
+
+    if (query.categoryId) {
+      filter.categoryId = query.categoryId;
+    }
+
+    const [data, total] = await Promise.all([
+      this.productModel.find(filter).skip(skip).limit(itemsPerPage),
+      this.productModel.countDocuments(filter),
+    ]);
+    const result = data.map((element) => element.toJSON());
+
+    return {
+      data: result,
+      meta: {
+        total,
+        page,
+        limit: itemsPerPage,
+        totalPages: Math.ceil(total / itemsPerPage),
+      },
+    };
   }
 
   async findOne(id: string): Promise<Product> {
-    const product = await this.productModel.findById(id);
+    const product = await this.productModel
+      .findById(id)
+      .populate('categoryId')
+      .populate('priceHistory.updatedBy', 'name email');
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -92,7 +123,7 @@ export class ProductService {
       ? await this.productModel.findById(id).select('images').lean()
       : null;
 
-    if (files?.length && !existing) {
+    if (files?.length) {
       await this.removeFiles(files.map((f) => `uploads/images/${f.filename}`));
       throw new NotFoundException('Product not found');
     }
