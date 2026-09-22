@@ -9,6 +9,7 @@ import { Model, UpdateQuery } from 'mongoose';
 import { join } from 'path';
 import { CreateProductDto } from 'src/dto/create-product.dto';
 import { UpdateProductDto } from 'src/dto/update-product.dto';
+import { Category, CategoryDocument } from 'src/schemas/category.schema';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 
 @Injectable()
@@ -16,6 +17,8 @@ export class ProductService {
   constructor(
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
+    @InjectModel(Category.name)
+    private readonly categoryModel: Model<CategoryDocument>,
   ) {}
 
   private async removeFiles(urls: string[]): Promise<void> {
@@ -26,11 +29,19 @@ export class ProductService {
     );
   }
 
+  private async assertCategoryExists(categoryId: string): Promise<void> {
+    const exists = await this.categoryModel.exists({ _id: categoryId });
+    if (!exists) {
+      throw new NotFoundException('Category not found');
+    }
+  }
+
   async create(
     dto: CreateProductDto,
     files: Express.Multer.File[],
     id: string,
   ): Promise<Product> {
+    await this.assertCategoryExists(dto.categoryId);
     const fileUrls = files.map(
       (element) => `uploads/images/${element.filename}`,
     );
@@ -45,6 +56,7 @@ export class ProductService {
       });
       return product.toJSON();
     } catch (error) {
+      await this.removeFiles(fileUrls);
       if (error.code === 11000) {
         const field = Object.keys(error.keyPattern)[0];
         throw new ConflictException(`This ${field} existed`);
@@ -72,9 +84,20 @@ export class ProductService {
     files: Express.Multer.File[],
     adminId: string,
   ): Promise<Product> {
-    const set: Record<string, any> = { ...dto };
+    if (dto.categoryId !== undefined) {
+      await this.assertCategoryExists(dto.categoryId);
+    }
 
-    if (files?.length) {
+    const existing = files?.length
+      ? await this.productModel.findById(id).select('images').lean()
+      : null;
+
+    if (files?.length && !existing) {
+      await this.removeFiles(files.map((f) => `uploads/images/${f.filename}`));
+      throw new NotFoundException('Product not found');
+    }
+    const set: Record<string, any> = { ...dto };
+    if (files?.length && !existing) {
       set.images = files.map((f) => `uploads/images/${f.filename}`);
     }
 
@@ -94,9 +117,21 @@ export class ProductService {
       const product = await this.productModel.findByIdAndUpdate(id, update, {
         new: true,
       });
-      if (!product) throw new NotFoundException('Product not found');
+      if (!product) {
+        if (files?.length) {
+          await this.removeFiles(set.images);
+        }
+        throw new NotFoundException('Product not found');
+      }
+
+      if (files?.length && existing?.images?.length) {
+        await this.removeFiles(existing.images);
+      }
       return product.toJSON();
     } catch (error) {
+      if (files?.length && !(error instanceof NotFoundException)) {
+        await this.removeFiles(set.images);
+      }
       if (error.code === 11000) {
         const field = Object.keys(error.keyPattern)[0];
         throw new ConflictException(`This ${field} existed`);
@@ -110,6 +145,11 @@ export class ProductService {
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    if (product.images?.length) {
+      await this.removeFiles(product.images);
+    }
+
     return { message: 'Product deleted' };
   }
 }
