@@ -2,19 +2,20 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Exclude } from 'class-transformer';
 import { HydratedDocument } from 'mongoose';
 import { AuthProvider } from 'src/enum/authProvider.enum';
+import { toJSONTransform } from 'src/helpers/toJSON';
 
 export type UserDocument = HydratedDocument<User>;
 
 @Schema({
   toJSON: {
-    versionKey: false,
-    transform: (doc, ret: any) => {
-      ret.id = ret._id.toString();
-      delete ret._id;
+    ...toJSONTransform,
+    transform: (doc: any, ret: any) => {
+      toJSONTransform.transform(doc, ret);
       delete ret.password;
       return ret;
     },
   },
+  timestamps: true,
 })
 export class User {
   @Prop({ required: true })

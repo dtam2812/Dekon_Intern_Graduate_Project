@@ -6,10 +6,14 @@ import { PaymentStatus } from 'src/enum/paymentStatus.enum';
 import { OrderStatusHistory } from './orderStatusHistory.schema';
 import { OrderStatus } from 'src/enum/orderStatus.enum';
 import type { shippingAddress } from 'src/type/shippingAddress.type';
+import { toJSONTransform } from 'src/helpers/toJSON';
 
 export type OrderDocument = HydratedDocument<Order>;
 
-@Schema()
+@Schema({
+  toJSON: toJSONTransform,
+  timestamps: true,
+})
 export class Order {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;

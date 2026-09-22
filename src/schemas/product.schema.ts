@@ -1,19 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import type { priceHistory } from 'src/type/priceHistory.type';
 import { PriceHistory } from './priceHistory.schema';
+import { toJSONTransform } from 'src/helpers/toJSON';
 
 export type ProductDocument = HydratedDocument<Product>;
 
 @Schema({
-  toJSON: {
-    versionKey: false,
-    transform: (doc, ret: any) => {
-      ret.id = ret._id.toString();
-      delete ret._id;
-      return ret;
-    },
-  },
+  toJSON: toJSONTransform,
+  timestamps: true,
 })
 export class Product {
   @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
@@ -27,7 +21,7 @@ export class Product {
   @Prop({ required: true })
   price!: number;
   @Prop({ type: [PriceHistory] })
-  priceHistory!: priceHistory[];
+  priceHistory!: PriceHistory[];
   @Prop({ required: true })
   stock!: number;
   @Prop({ type: [String], required: true })
