@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import {
   RefreshToken,
   RefreshTokenDocument,
@@ -41,6 +41,7 @@ export class AuthService {
     role: string,
     provider: string,
     familyId: string,
+    session?: ClientSession,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = await this.jwtService.signAsync(
       {
@@ -48,6 +49,7 @@ export class AuthService {
         email,
         fullName,
         role,
+        purpose: 'access',
       },
       {
         expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as StringValue,
@@ -60,13 +62,18 @@ export class AuthService {
       expiresAt.getDate() + Number(process.env.REFRESH_TOKEN_EXPIRES_DAYS || 7),
     );
 
-    await this.refreshTokenModel.create({
-      token: hashToken(rawRefreshToken),
-      userId: id,
-      familyId,
-      revoked: false,
-      expiresAt,
-    });
+    await this.refreshTokenModel.create(
+      [
+        {
+          token: hashToken(rawRefreshToken),
+          userId: id,
+          familyId,
+          revoked: false,
+          expiresAt,
+        },
+      ],
+      { session },
+    );
 
     return { accessToken, refreshToken: rawRefreshToken };
   }
@@ -154,41 +161,78 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const hashedToken = hashToken(dto.refreshToken);
 
-    const record = await this.refreshTokenModel
-      .findOne({ token: hashedToken })
-      .populate<{ userId: UserDocument }>('userId');
+    const session = await this.refreshTokenModel.db.startSession();
 
-    if (!record) {
-      throw new ConflictException('Invalid token');
+    try {
+      let result: { accessToken: string; refreshToken: string } | undefined;
+      let reuseDetected = false;
+
+      await session.withTransaction(async () => {
+        result = undefined;
+        reuseDetected = false;
+
+        const record = await this.refreshTokenModel
+          .findOne({ token: hashedToken })
+          .session(session)
+          .populate<{ userId: UserDocument }>('userId');
+
+        if (!record) {
+          throw new ConflictException('Invalid token');
+        }
+
+        if (record.revoked === true) {
+          await this.refreshTokenModel.updateMany(
+            { familyId: record.familyId },
+            { revoked: true },
+            { session },
+          );
+          reuseDetected = true;
+          return;
+        }
+
+        if (record.expiresAt < new Date()) {
+          throw new ConflictException('Invalid token');
+        }
+
+        const consumeResult = await this.refreshTokenModel.updateOne(
+          {
+            token: hashedToken,
+            revoked: false,
+          },
+          { revoked: true },
+          { session },
+        );
+
+        if (consumeResult.matchedCount === 0) {
+          await this.refreshTokenModel.updateMany(
+            { familyId: record.familyId },
+            { revoked: true },
+            { session },
+          );
+          reuseDetected = true;
+          return;
+        }
+
+        const user = record.userId;
+
+        result = await this.issueToken(
+          user.id,
+          user.email,
+          user.fullName,
+          user.role,
+          user.provider,
+          record.familyId,
+          session,
+        );
+      });
+
+      if (reuseDetected || !result) {
+        throw new ConflictException('Invalid token');
+      }
+      return result;
+    } finally {
+      await session.endSession();
     }
-
-    if (record.revoked === true) {
-      await this.refreshTokenModel.updateMany(
-        { familyId: record.familyId },
-        { revoked: true },
-      );
-      throw new ConflictException('Invalid token');
-    }
-
-    if (record.expiresAt < new Date()) {
-      throw new ConflictException('Invalid token');
-    }
-
-    await this.refreshTokenModel.updateOne(
-      { token: hashedToken },
-      { revoked: true },
-    );
-
-    const user = record.userId;
-
-    return this.issueToken(
-      user.id,
-      user.email,
-      user.fullName,
-      user.role,
-      user.provider,
-      record.familyId,
-    );
   }
 
   async logOut(dto: RefreshTokenDto): Promise<{ message: string }> {
