@@ -47,6 +47,7 @@ export class CategoryService {
     try {
       const cate = await this.categoryModel.findByIdAndUpdate(id, dto, {
         new: true,
+        runValidators: true,
       });
       if (!cate) throw new NotFoundException('Category not found');
       return cate.toJSON();

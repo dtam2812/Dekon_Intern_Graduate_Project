@@ -6,7 +6,7 @@ import {
   IsPositive,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 
 export class CreateProductDto {
   @IsMongoId()
@@ -24,12 +24,20 @@ export class CreateProductDto {
   @IsNotEmpty()
   description!: string;
 
-  @Type(() => Number)
+  @Transform(
+    ({ value }) =>
+      typeof value === 'string' && value.trim() === '' ? NaN : Number(value),
+    { toClassOnly: true },
+  )
   @IsNumber()
   @IsPositive()
   price!: number;
 
-  @Type(() => Number)
+  @Transform(
+    ({ value }) =>
+      typeof value === 'string' && value.trim() === '' ? NaN : Number(value),
+    { toClassOnly: true },
+  )
   @IsNumber()
   @Min(0)
   stock!: number;

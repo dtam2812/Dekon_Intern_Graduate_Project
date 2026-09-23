@@ -123,12 +123,12 @@ export class ProductService {
       ? await this.productModel.findById(id).select('images').lean()
       : null;
 
-    if (files?.length) {
+    if (files?.length && !existing) {
       await this.removeFiles(files.map((f) => `uploads/images/${f.filename}`));
       throw new NotFoundException('Product not found');
     }
     const set: Record<string, any> = { ...dto };
-    if (files?.length && !existing) {
+    if (files?.length) {
       set.images = files.map((f) => `uploads/images/${f.filename}`);
     }
 
