@@ -6,7 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { unlink } from 'fs/promises';
 import { Model, UpdateQuery } from 'mongoose';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { CreateProductDto } from 'src/dto/create-product.dto';
 import { FilterProductDto } from 'src/dto/filter-product.dto';
 import { UpdateProductDto } from 'src/dto/update-product.dto';
@@ -25,7 +25,9 @@ export class ProductService {
   private async removeFiles(urls: string[]): Promise<void> {
     await Promise.all(
       urls.map((element) =>
-        unlink(join(process.cwd(), element)).catch(() => undefined),
+        unlink(join(process.cwd(), 'uploads/images', basename(element))).catch(
+          () => undefined,
+        ),
       ),
     );
   }
@@ -102,7 +104,7 @@ export class ProductService {
     const product = await this.productModel
       .findById(id)
       .populate('categoryId')
-      .populate('priceHistory.updatedBy', 'name email');
+      .populate('priceHistory.updatedBy', 'fullName');
     if (!product) {
       throw new NotFoundException('Product not found');
     }

@@ -2,8 +2,6 @@ import {
   IsString,
   IsNumber,
   IsMongoId,
-  IsArray,
-  ArrayNotEmpty,
   IsPositive,
   Min,
   IsOptional,
@@ -38,10 +36,4 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   stock?: number;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  images?: string[];
 }

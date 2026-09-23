@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsMongoId, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsInt,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class FilterProductDto {
   @Type(() => Number)
@@ -12,6 +19,7 @@ export class FilterProductDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(100)
   itemsPerPage?: number = 10;
 
   @IsOptional()

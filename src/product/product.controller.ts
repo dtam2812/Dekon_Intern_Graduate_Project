@@ -11,6 +11,7 @@ import {
   Req,
   BadRequestException,
   Query,
+  UseFilters,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from 'src/dto/create-product.dto';
@@ -24,6 +25,7 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { storageConfig } from 'src/helpers/config';
 import { extname } from 'path';
 import { FilterProductDto } from 'src/dto/filter-product.dto';
+import { CleanupUploadedFilesFilter } from 'src/filter/cleanup-uploaded-files.filter';
 
 @Controller('product')
 export class ProductController {
@@ -31,6 +33,7 @@ export class ProductController {
 
   @Post()
   @Roles(UserRole.ADMIN)
+  @UseFilters(CleanupUploadedFilesFilter)
   @UseInterceptors(
     FilesInterceptor('images', 5, {
       storage: storageConfig('images'),
@@ -72,6 +75,7 @@ export class ProductController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
+  @UseFilters(CleanupUploadedFilesFilter)
   @UseInterceptors(
     FilesInterceptor('images', 5, {
       storage: storageConfig('images'),

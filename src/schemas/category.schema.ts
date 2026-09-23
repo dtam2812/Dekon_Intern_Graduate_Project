@@ -8,9 +8,9 @@ export type CategoryDocument = HydratedDocument<Category>;
   toJSON: toJSONTransform,
 })
 export class Category {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   name!: string;
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   slug!: string;
 }
 
