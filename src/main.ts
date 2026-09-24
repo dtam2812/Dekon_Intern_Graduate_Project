@@ -33,7 +33,7 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalPipes(new ValidationPipe());
-  const { httpAdapter } = app.get(HttpAdapterHost);
+  const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new CatchEverythingFilter(httpAdapter));
   await app.listen(process.env.PORT ?? 3000);
 }
