@@ -26,6 +26,7 @@ import { storageConfig } from 'src/helpers/config';
 import { extname } from 'path';
 import { FilterProductDto } from 'src/dto/filter-product.dto';
 import { CleanupUploadedFilesFilter } from 'src/filter/cleanup-uploaded-files.filter';
+import { ValidateImageFilesPipe } from 'src/pipe/validate-image-file.pipe';
 
 @Controller('product')
 export class ProductController {
@@ -53,7 +54,7 @@ export class ProductController {
   )
   create(
     @Body() createProductDto: CreateProductDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles(ValidateImageFilesPipe) files: Express.Multer.File[],
     @Req() req,
   ): Promise<Product> {
     if (!files?.length)
@@ -96,7 +97,7 @@ export class ProductController {
   update(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles(ValidateImageFilesPipe) files: Express.Multer.File[],
     @Req() req,
   ): Promise<Product> {
     return this.productService.update(
