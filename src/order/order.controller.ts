@@ -5,38 +5,65 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { UpdateOrderDto } from 'src/dto/update-order';
 import { CreateOrderDto } from 'src/dto/create-order.dto';
+import { FilterOrderDto } from 'src/dto/filter-order.dto';
+import { OrderStatus } from 'src/enum/orderStatus.enum';
+import { Roles } from 'src/decorator/role.decorator';
+import { UserRole } from 'src/enum/userRole.enum';
+import { UpdateOrderStatusDto } from 'src/dto/update-order-status.dto';
+import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { Order } from 'src/schemas/order.schema';
 
 @Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  create(@Body() createOrderDto: CreateOrderDto) {
-    return this.orderService.create(createOrderDto);
+  create(@Req() req, @Body() createOrderDto: CreateOrderDto): Promise<Order> {
+    return this.orderService.create(req.user.sub, createOrderDto);
+  }
+
+  @Post('confirm')
+  confirmOrder(@Body('token') token: string): Promise<Order> {
+    return this.orderService.confirmOrder(token);
+  }
+
+  @Post('cancel')
+  cancelOrder(@Body('token') token: string): Promise<Order> {
+    return this.orderService.cancelOrder(token);
   }
 
   @Get()
-  findAll() {
-    return this.orderService.findAll();
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  findAll(@Query() query: FilterOrderDto): Promise<Order[]> {
+    return this.orderService.findAll(query);
+  }
+
+  @Get('byCustomer')
+  findOrdersByCustomer(@Req() req: any): Promise<Order[]> {
+    return this.orderService.findOrdersByCustomer(req.user.sub);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.orderService.findOne(+id);
+  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Order> {
+    return this.orderService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.orderService.update(+id, updateOrderDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.orderService.remove(+id);
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  updateOrderStatus(
+    @Param('id', ParseObjectIdPipe) orderId: string,
+    @Body() updateOrderStatus: UpdateOrderStatusDto,
+    @Req() req,
+  ): Promise<Order> {
+    return this.orderService.updateOrderStatus(
+      orderId,
+      updateOrderStatus,
+      req.user.sub,
+    );
   }
 }

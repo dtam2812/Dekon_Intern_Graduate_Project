@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { toJSONTransform } from 'src/helpers/toJSON';
 
 export type OrderItemDocument = HydratedDocument<OrderItem>;
 
-@Schema()
+@Schema({ toJSON: toJSONTransform })
 export class OrderItem {
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId!: Types.ObjectId;
