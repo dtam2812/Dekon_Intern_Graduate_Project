@@ -26,8 +26,17 @@ describe('AuthController', () => {
     confirmLinkGoogleAccount: jest.fn(),
   };
 
-  const mockAuthGuard = { canActivate: () => true };
-  const mockRolesGuard = { canActivate: () => true };
+  const mockAuthGuard: { canActivate: (context: ExecutionContext) => boolean } =
+    {
+      canActivate: (context: ExecutionContext) => {
+        const req = context.switchToHttp().getRequest();
+        req.user = { sub: 'mockUserId' };
+        return true;
+      },
+    };
+  const mockRolesGuard: { canActivate: () => boolean } = {
+    canActivate: () => true,
+  };
 
   beforeEach(async () => {
     mockAuthGuard.canActivate = (context: ExecutionContext) => {
@@ -70,7 +79,6 @@ describe('AuthController', () => {
       email: 'tam@gmail.com',
       password: '12345',
     };
-    const id = '507f1f77bcf86cd799439011';
     it('should let a user register new account and return 201', async () => {
       const result = {
         accessToken: '1ekoqeok-022ke2-kkqok-dokdokdoqkw',
@@ -115,7 +123,7 @@ describe('AuthController', () => {
         new UnauthorizedException('Invalid credentials'),
       );
 
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/login')
         .send(logInDto)
         .expect(401);
@@ -128,7 +136,7 @@ describe('AuthController', () => {
         new UnauthorizedException('Invalid credentials'),
       );
 
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/login')
         .send(logInDto)
         .expect(401);
@@ -164,7 +172,7 @@ describe('AuthController', () => {
         new ConflictException('Invalid token'),
       );
 
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/refresh')
         .send(refreshTokenDto)
         .expect(409);
@@ -179,7 +187,7 @@ describe('AuthController', () => {
         new ConflictException('Invalid token'),
       );
 
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/refresh')
         .send(refreshTokenDto)
         .expect(409);
@@ -194,7 +202,7 @@ describe('AuthController', () => {
         new ConflictException('Invalid token'),
       );
 
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/refresh')
         .send(refreshTokenDto)
         .expect(409);

@@ -57,7 +57,7 @@ describe('UserController', () => {
     jest.clearAllMocks();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
   });
 
@@ -123,10 +123,7 @@ describe('UserController', () => {
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
       mockRolesGuard.canActivate = () => false;
-      await request(app.getHttpServer())
-        .get('/user')
-        .send({ email: 'tam@gmail.com', password: '123456' })
-        .expect(403);
+      await request(app.getHttpServer()).get(`/user`).expect(403);
 
       expect(mockUserService.findAll).not.toHaveBeenCalled();
     });
@@ -161,12 +158,9 @@ describe('UserController', () => {
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
       mockRolesGuard.canActivate = () => false;
-      await request(app.getHttpServer())
-        .get('/user')
-        .send({ email: 'tam@gmail.com', password: '123456' })
-        .expect(403);
+      await request(app.getHttpServer()).get(`/user/${id}`).expect(403);
 
-      expect(mockUserService.findAll).not.toHaveBeenCalled();
+      expect(mockUserService.findOne).not.toHaveBeenCalled();
     });
   });
 
