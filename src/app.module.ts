@@ -16,6 +16,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/adapters/pug.adapter';
 import { LoggerModule } from 'nestjs-pino';
 import { join } from 'path';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -25,6 +26,14 @@ import { join } from 'path';
     ProductModule,
     CategoryModule,
     RefreshTokenModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
     MongooseModule.forRoot(process.env.MONGODB_URI!),
     AuthModule,
     LoggerModule.forRoot(),
@@ -57,6 +66,10 @@ import { join } from 'path';
   ],
   controllers: [AppController],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     AppService,
     {
       provide: APP_GUARD,

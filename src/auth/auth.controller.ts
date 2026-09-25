@@ -5,12 +5,14 @@ import { RefreshTokenDto } from 'src/dto/refresh-token.dto';
 import { RegisterDto } from 'src/dto/register.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Public } from 'src/decorator/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   register(
     @Body() dto: RegisterDto,
@@ -19,6 +21,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   logIn(
     @Body() dto: LogInUserDto,
@@ -27,6 +30,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   refreshToken(
     @Body() dto: RefreshTokenDto,
   ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -49,6 +53,7 @@ export class AuthController {
   googleAuth() {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any) {
@@ -56,6 +61,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('google/confirm-link')
   async confirmLinkGoogleAccount(
     @Body() dto: { pendingLinkToken: string; password: string },
