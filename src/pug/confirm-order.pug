@@ -12,13 +12,14 @@
   const who = name || 'there'
   const items = (order && order.orderItems) || []
   const a = (order && order.shippingAddress) || {}
-  const streetPart = a.street != null
-  ? (typeof a.street === 'number' ? `Street ${a.street}` : `${a.street} Street`)
-  : ''
-  const wardPart = a.ward != null
-  ? (typeof a.ward === 'number' ? `Ward ${a.ward}` : `${a.ward} Ward`)
-  : ''
   const isNumeric = (v) => v != null && /^\d+$/.test(String(v).trim())
+  const hasValue = (v) => v != null && String(v).trim() !== ''
+  const streetPart = hasValue(a.street)
+  ? (isNumeric(a.street) ? `Street ${a.street}` : `${a.street} Street`)
+  : ''
+  const wardPart = hasValue(a.ward)
+  ? (isNumeric(a.ward) ? `Ward ${a.ward}` : `${a.ward} Ward`)
+  : ''
   const DistrictPart = a.district != null
   ? (isNumeric(a.district) ? `District ${a.district}` : `${a.district} District`)
   : ''

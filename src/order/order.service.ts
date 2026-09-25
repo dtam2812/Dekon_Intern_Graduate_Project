@@ -183,7 +183,7 @@ export class OrderService {
 
     await this.sendEmail({
       to: customer!.email,
-      subject: 'Xác nhận đơn hàng',
+      subject: 'Confirm your order',
       template: 'confirm-order',
       context: {
         order,
@@ -414,7 +414,7 @@ export class OrderService {
     if (customer?.email) {
       await this.sendEmail({
         to: customer.email,
-        subject: `Your order #${orderCode} is successfully payed`,
+        subject: `Payment received for order #${orderCode}`,
         template: 'order-payment-confirmed',
         context: {
           order,

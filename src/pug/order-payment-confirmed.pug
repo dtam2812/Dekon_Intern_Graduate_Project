@@ -11,13 +11,14 @@
   const who = name || 'there'
   const items = (order && order.orderItems) || []
   const a = (order && order.shippingAddress) || {}
-  const streetPart = a.street != null
-  ? (typeof a.street === 'number' ? `Street ${a.street}` : `${a.street} Street`)
-  : ''
-  const wardPart = a.ward != null
-  ? (typeof a.ward === 'number' ? `Ward ${a.ward}` : `${a.ward} Ward`)
-  : ''
   const isNumeric = (v) => v != null && /^\d+$/.test(String(v).trim())
+  const hasValue = (v) => v != null && String(v).trim() !== ''
+  const streetPart = hasValue(a.street)
+  ? (isNumeric(a.street) ? `Street ${a.street}` : `${a.street} Street`)
+  : ''
+  const wardPart = hasValue(a.ward)
+  ? (isNumeric(a.ward) ? `Ward ${a.ward}` : `${a.ward} Ward`)
+  : ''
   const DistrictPart = a.district != null
   ? (isNumeric(a.district) ? `District ${a.district}` : `${a.district} District`)
   : ''
@@ -59,7 +60,10 @@ html(lang="en")
                 p(style=`${label}margin-top:16px;`) Order ##{orderCode}
                 h1(style=`margin:0 0 12px;font-size:26px;line-height:32px;font-weight:700;color:${ink};`) We've received your payment
                 p(style=`margin:0;font-size:15px;line-height:24px;color:${muted};`)
-                  | Hi #{who}, we've confirmed your bank transfer for this order. Your payment status has been updated to Paid, and we're getting your order ready.
+                  if order && order.paymentMethod === 'Banking'
+                    | Hi #{who}, we've confirmed your bank transfer for this order. Your payment status has been updated to Paid.
+                  else
+                    | Hi #{who}, we've received your payment for this order. Your payment status has been updated to Paid.
             //- Order summary
             tr
               td(style="padding:24px 32px 8px;")
