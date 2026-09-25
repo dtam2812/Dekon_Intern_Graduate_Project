@@ -1,7 +1,6 @@
--  
+-
   const brand = '#4f46e5'
   const green = '#16a34a'
-  const red = '#dc2626'
   const ink = '#111827'
   const muted = '#6b7280'
   const line = '#e5e7eb'
@@ -40,11 +39,11 @@ html(lang="en")
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
     meta(http-equiv="X-UA-Compatible" content="IE=edge")
-    title Confirm your order #{orderCode}
+    title Payment received for order #{orderCode}
   body(style=`margin:0;padding:0;background:${pageBg};`)
-    //- Preheader: the grey preview text shown next to the subject in the inbox
+    //- Preheader
     div(style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f3f4f6;")
-      | Confirm or cancel your order ##{orderCode}. It is waiting for your confirmation.
+      | We've confirmed your payment for order ##{orderCode}. Thank you!
     table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:${pageBg};`)
       tr
         td(align="center" style="padding:24px 12px;")
@@ -53,30 +52,14 @@ html(lang="en")
             tr
               td(style=`background:${brand};padding:22px 32px;`)
                 span(style="font-size:20px;font-weight:700;letter-spacing:0.3px;color:#ffffff;") #{shop}
-            //- Title + intro
+            //- Status + title + intro
             tr
               td(style="padding:32px 32px 8px;")
-                p(style=label) Order ##{orderCode}
-                h1(style=`margin:0 0 12px;font-size:26px;line-height:32px;font-weight:700;color:${ink};`) Please confirm your order
+                span(style=`display:inline-block;padding:4px 12px;border-radius:999px;background:#dcfce7;color:${green};font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;`) ✓ Payment received
+                p(style=`${label}margin-top:16px;`) Order ##{orderCode}
+                h1(style=`margin:0 0 12px;font-size:26px;line-height:32px;font-weight:700;color:${ink};`) We've received your payment
                 p(style=`margin:0;font-size:15px;line-height:24px;color:${muted};`)
-                  | Hi #{who}, thanks for shopping with us! Your order is currently
-                  |
-                  strong(style=`color:${ink};`) pending
-                  | . Confirm it so we can start preparing it, or cancel it if you changed your mind.
-            //- Buttons
-            tr
-              td(style="padding:24px 32px 8px;")
-                table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0")
-                  tr
-                    td(align="center" style=`background:${green};border-radius:8px;`)
-                      a(href=confirmLink target="_blank" style="display:block;padding:14px 20px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;") Confirm order
-                  tr
-                    td(style="height:12px;line-height:12px;font-size:12px;") &nbsp;
-                  tr
-                    td(align="center" style=`border:2px solid ${red};border-radius:8px;`)
-                      a(href=cancelLink target="_blank" style=`display:block;padding:12px 20px;font-size:16px;font-weight:700;color:${red};text-decoration:none;`) Cancel order
-                if expiresIn
-                  p(style=`margin:14px 0 0;text-align:center;font-size:13px;color:${muted};`) These links expire in #{expiresIn}.
+                  | Hi #{who}, we've confirmed your bank transfer for this order. Your payment status has been updated to Paid, and we're getting your order ready.
             //- Order summary
             tr
               td(style="padding:24px 32px 8px;")
@@ -91,20 +74,33 @@ html(lang="en")
                   tr
                     td(style=`padding:16px 0 0;font-size:16px;font-weight:700;color:${ink};`) Total
                     td(align="right" style=`padding:16px 0 0 16px;font-size:18px;font-weight:700;color:${brand};white-space:nowrap;`) #{money(order && order.total)}
-            //- Delivery + payment
+            //- Payment + delivery
             tr
               td(style="padding:16px 32px 8px;")
                 table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:#f9fafb;border:1px solid ${line};border-radius:8px;`)
                   tr
                     td(style="padding:16px 18px;")
-                      p(style=label) Deliver to
+                      if payment
+                        p(style=label) Payment
+                        p(style=text)
+                          strong Status:&nbsp;
+                          | Paid
+                        p(style=text) #{payment}
+                      p(style=`${label}margin-top:16px;`) Shipping to
                       p(style=text)
                         strong #{order && order.receiverName}
                       p(style=text) #{order && order.receiverPhone}
                       p(style=text) #{address}
-                      if a.note
-                        p(style=`margin:6px 0 0;font-size:13px;color:${muted};`) Note: #{a.note}
-                      if payment
-                        p(style=`${label}margin-top:16px;`) Payment
-                        p(style=text) #{payment}
-            
+            //- Help text
+            tr
+              td(style="padding:16px 32px 24px;")
+                p(style=`margin:0;font-size:13px;line-height:20px;color:${muted};`)
+                  | Think this isn't right? Please contact us
+                  if supportEmail
+                    |  at
+                    |
+                    a(href=`mailto:${supportEmail}` style=`color:${brand};`) #{supportEmail}
+                  | .
+            //- Footer
+            tr
+              td(align="center" style=`background:#f9fafb;border-top:1px solid ${line};padding:16px 32px;font-size:12px;color:#9ca3af;`) © #{new Date().getFullYear()} #{shop}

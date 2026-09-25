@@ -52,7 +52,19 @@ export class OrderController {
     @Param('id', ParseObjectIdPipe) id: string,
     @Req() req: any,
   ): Promise<Order> {
-    return this.orderService.findOne(id, req.user);
+    return this.orderService.findOne(id, {
+      userId: req.user.sub,
+      role: req.user.role,
+    });
+  }
+
+  @Patch('updatePaymentStatus/:id')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  updatePaymentStatus(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Req() req: any,
+  ): Promise<Order> {
+    return this.orderService.updatePaymentStatus(id, req.user);
   }
 
   @Patch(':id')

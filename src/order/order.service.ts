@@ -260,7 +260,12 @@ export class OrderService {
     try {
       await session.withTransaction(async () => {
         const updated = await this.orderModel.findOneAndUpdate(
-          { _id: orderId, userId, status: OrderStatus.PENDING },
+          {
+            _id: orderId,
+            userId,
+            status: OrderStatus.PENDING,
+            paymentStatus: { $ne: PaymentStatus.PAID },
+          },
           {
             $set: { status: OrderStatus.CANCELLED },
             $push: {
@@ -368,6 +373,58 @@ export class OrderService {
     const orders = await this.orderModel.find({ userId: id });
 
     return orders.map((element) => element.toJSON());
+  }
+
+  async updatePaymentStatus(
+    id: string,
+    requester: { userId: string; role: string },
+  ): Promise<Order> {
+    if (!['staff', 'admin'].includes(requester.role)) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    const order = await this.orderModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: { $ne: OrderStatus.CANCELLED },
+        paymentStatus: PaymentStatus.UNPAID,
+      },
+      { $set: { paymentStatus: PaymentStatus.PAID } },
+      { returnDocument: 'after' },
+    );
+
+    if (!order) {
+      const existing = await this.orderModel.findById(id);
+      if (!existing) {
+        throw new NotFoundException('Order not found');
+      }
+      if (existing.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Cannot update payment status for a cancelled order',
+        );
+      }
+      throw new BadRequestException('Order is already marked as paid');
+    }
+    const customer = await this.userModel
+      .findById(order.userId)
+      .select('email fullName');
+
+    const orderCode = id.toString().slice(-8).toUpperCase();
+
+    if (customer?.email) {
+      await this.sendEmail({
+        to: customer.email,
+        subject: `Your order #${orderCode} is successfully payed`,
+        template: 'order-payment-confirmed',
+        context: {
+          order,
+          name: customer.fullName,
+          shopName: process.env.SHOP_NAME,
+        },
+      });
+    }
+
+    return order.toJSON();
   }
 
   async updateOrderStatus(

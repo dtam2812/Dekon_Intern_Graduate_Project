@@ -11,7 +11,24 @@
   const who = name || 'there'
   const items = (order && order.orderItems) || []
   const a = (order && order.shippingAddress) || {}
-  const address = [a.houseNumber, a.street, a.ward, a.district, a.city, a.country].filter(Boolean).join(', ')
+  const streetPart = a.street != null
+  ? (typeof a.street === 'number' ? `Street ${a.street}` : `${a.street} Street`)
+  : ''
+  const wardPart = a.ward != null
+  ? (typeof a.ward === 'number' ? `Ward ${a.ward}` : `${a.ward} Ward`)
+  : ''
+  const isNumeric = (v) => v != null && /^\d+$/.test(String(v).trim())
+  const DistrictPart = a.district != null
+  ? (isNumeric(a.district) ? `District ${a.district}` : `${a.district} District`)
+  : ''
+  const address = [
+  a.houseNumber,
+  streetPart,
+  wardPart,
+  DistrictPart,
+  a.city ? `${a.city} City` : '',
+  a.country,
+  ].filter(Boolean).join(', ')
   const orderCode = String((order && order.id) || '').slice(-8).toUpperCase()
   const payment = { COD: 'Cash on delivery', Banking: 'Bank transfer' }[order && order.paymentMethod] || (order && order.paymentMethod) || ''
   const isPaid = String((order && order.paymentStatus) || '').toLowerCase() === 'paid'
