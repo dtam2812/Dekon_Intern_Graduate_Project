@@ -11,7 +11,6 @@ import {
 import { OrderService } from './order.service';
 import { CreateOrderDto } from 'src/dto/create-order.dto';
 import { FilterOrderDto } from 'src/dto/filter-order.dto';
-import { OrderStatus } from 'src/enum/orderStatus.enum';
 import { Roles } from 'src/decorator/role.decorator';
 import { UserRole } from 'src/enum/userRole.enum';
 import { UpdateOrderStatusDto } from 'src/dto/update-order-status.dto';
@@ -49,8 +48,11 @@ export class OrderController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Order> {
-    return this.orderService.findOne(id);
+  findOne(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Req() req: any,
+  ): Promise<Order> {
+    return this.orderService.findOne(id, req.user);
   }
 
   @Patch(':id')
@@ -58,7 +60,7 @@ export class OrderController {
   updateOrderStatus(
     @Param('id', ParseObjectIdPipe) orderId: string,
     @Body() updateOrderStatus: UpdateOrderStatusDto,
-    @Req() req,
+    @Req() req: any,
   ): Promise<Order> {
     return this.orderService.updateOrderStatus(
       orderId,

@@ -2,6 +2,7 @@ import { ISendMailOptions, MailerService } from '@nestjs-modules/mailer';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -308,7 +309,8 @@ export class OrderService {
   }
 
   async findAll(query: FilterOrderDto): Promise<any> {
-    const { page = 1, itemsPerPage = 10 } = query;
+    const page = Number(query.page) || 1;
+    const itemsPerPage = Number(query.itemsPerPage) || 10;
     const skip = (page - 1) * itemsPerPage;
 
     const filter: Record<string, any> = {};
@@ -340,15 +342,25 @@ export class OrderService {
     };
   }
 
-  async findOne(id: string): Promise<Order> {
+  async findOne(
+    id: string,
+    requester: { userId: string; role: string },
+  ): Promise<Order> {
     const order = await this.orderModel
       .findById(id)
-      .populate('userId')
-      .populate('orderStatusHistory.changedBy');
+      .populate('userId', 'name email')
+      .populate('orderStatusHistory.changedBy', 'name role');
 
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+    const isOwner = order.userId._id.toString() === requester.userId;
+    const isAdminOrStaff = ['staff', 'admin'].includes(requester.role);
+
+    if (!isOwner && !isAdminOrStaff) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
     return order.toJSON();
   }
 
