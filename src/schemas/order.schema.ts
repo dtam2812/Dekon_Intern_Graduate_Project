@@ -5,8 +5,8 @@ import { PaymentMethod } from 'src/enum/paymentMethod.enum';
 import { PaymentStatus } from 'src/enum/paymentStatus.enum';
 import { OrderStatusHistory } from './orderStatusHistory.schema';
 import { OrderStatus } from 'src/enum/orderStatus.enum';
-import type { shippingAddress } from 'src/type/shippingAddress.type';
 import { toJSONTransform } from 'src/helpers/toJSON';
+import { ShippingAddress } from './shippingAddress.schema';
 
 export type OrderDocument = HydratedDocument<Order>;
 
@@ -25,7 +25,7 @@ export class Order {
   })
   status!: string;
   @Prop({ required: true })
-  shippingAddress!: shippingAddress;
+  shippingAddress!: ShippingAddress;
   @Prop({ required: true, enum: PaymentMethod })
   paymentMethod!: string;
   @Prop({ required: true })

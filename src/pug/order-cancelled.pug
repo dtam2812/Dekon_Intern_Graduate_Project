@@ -1,0 +1,76 @@
+-
+  const brand = '#4f46e5'
+  const red = '#dc2626'
+  const ink = '#111827'
+  const muted = '#6b7280'
+  const line = '#e5e7eb'
+  const pageBg = '#f3f4f6'
+  const font = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+  const money = (n) => Number(n || 0).toLocaleString('vi-VN') + ' ₫'
+  const shop = shopName || 'Our Shop'
+  const who = name || 'there'
+  const items = (order && order.orderItems) || []
+  const orderCode = String((order && order.id) || '').slice(-8).toUpperCase()
+  const label = `margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${muted};`
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    meta(http-equiv="X-UA-Compatible" content="IE=edge")
+    title Your order #{orderCode} was cancelled
+  body(style=`margin:0;padding:0;background:${pageBg};`)
+    //- Preheader
+    div(style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f3f4f6;")
+      | Your order ##{orderCode} has been cancelled. You have not been charged.
+    table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:${pageBg};`)
+      tr
+        td(align="center" style="padding:24px 12px;")
+          table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`max-width:600px;background:#ffffff;border:1px solid ${line};border-radius:12px;overflow:hidden;font-family:${font};`)
+            //- Header
+            tr
+              td(style=`background:${brand};padding:22px 32px;`)
+                span(style="font-size:20px;font-weight:700;letter-spacing:0.3px;color:#ffffff;") #{shop}
+            //- Status + title + intro
+            tr
+              td(style="padding:32px 32px 8px;")
+                span(style=`display:inline-block;padding:4px 12px;border-radius:999px;background:#fee2e2;color:${red};font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;`) ✕ Cancelled
+                p(style=`${label}margin-top:16px;`) Order ##{orderCode}
+                h1(style=`margin:0 0 12px;font-size:26px;line-height:32px;font-weight:700;color:${ink};`) Your order has been cancelled
+                p(style=`margin:0;font-size:15px;line-height:24px;color:${muted};`)
+                  | Hi #{who}, as requested, we have cancelled your order. You have not been charged, and the items have been released back to our stock.
+            //- Cancelled items
+            tr
+              td(style="padding:24px 32px 8px;")
+                p(style=label) Cancelled items
+                table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0")
+                  each item in items
+                    tr
+                      td(valign="top" style=`padding:12px 0;border-bottom:1px solid ${line};`)
+                        div(style=`font-size:15px;font-weight:600;color:${muted};text-decoration:line-through;`) #{item.productName}
+                        div(style=`margin-top:2px;font-size:13px;color:${muted};`) #{item.quantity} × #{money(item.orderedPrice)}
+                      td(align="right" valign="top" style=`padding:12px 0 12px 16px;border-bottom:1px solid ${line};font-size:15px;font-weight:600;color:${muted};white-space:nowrap;`) #{money(item.orderedPrice * item.quantity)}
+                  tr
+                    td(style=`padding:16px 0 0;font-size:16px;font-weight:700;color:${ink};`) Order total
+                    td(align="right" style=`padding:16px 0 0 16px;font-size:18px;font-weight:700;color:${muted};white-space:nowrap;`) #{money(order && order.total)}
+            //- Continue shopping button (optional)
+            if shopUrl
+              tr
+                td(style="padding:24px 32px 8px;")
+                  table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0")
+                    tr
+                      td(align="center" style=`background:${brand};border-radius:8px;`)
+                        a(href=shopUrl target="_blank" style="display:block;padding:14px 20px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;") Continue shopping
+            //- Help text
+            tr
+              td(style="padding:16px 32px 24px;")
+                p(style=`margin:0;font-size:13px;line-height:20px;color:${muted};`)
+                  | Did not request this cancellation, or changed your mind? Please place a new order or contact us
+                  if supportEmail
+                    |  at
+                    |
+                    a(href=`mailto:${supportEmail}` style=`color:${brand};`) #{supportEmail}
+                  | .
+            //- Footer
+            tr
+              td(align="center" style=`background:#f9fafb;border-top:1px solid ${line};padding:16px 32px;font-size:12px;color:#9ca3af;`) © #{new Date().getFullYear()} #{shop}
