@@ -21,8 +21,7 @@ describe('AuthController', () => {
     refreshToken: jest.fn(),
     logOut: jest.fn(),
     getProfile: jest.fn(),
-    googleAuth: jest.fn(),
-    googleAuthCallback: jest.fn(),
+    googleLogin: jest.fn(),
     confirmLinkGoogleAccount: jest.fn(),
   };
 
@@ -38,6 +37,19 @@ describe('AuthController', () => {
     canActivate: () => true,
   };
 
+  const mockGoogleGuard: {
+    canActivate: (context: ExecutionContext) => boolean;
+  } = {
+    canActivate: (context: ExecutionContext) => {
+      const req = context.switchToHttp().getRequest();
+      req.user = {
+        email: 'tam@gmail.com',
+        fullName: 'Tam',
+      };
+      return true;
+    },
+  };
+
   beforeEach(async () => {
     mockAuthGuard.canActivate = (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest();
@@ -51,6 +63,8 @@ describe('AuthController', () => {
     })
       .overrideGuard(AuthGuard)
       .useValue(mockAuthGuard)
+      .overrideGuard(AuthGuard('google'))
+      .useValue(mockGoogleGuard)
       .overrideGuard(RolesGuard)
       .useValue(mockRolesGuard)
       .compile();
@@ -238,6 +252,102 @@ describe('AuthController', () => {
         .expect(200);
 
       expect(res.body).toEqual({ sub: 'mockUserId' });
+    });
+  });
+
+  describe('GET /auth/google', () => {
+    it('should activate google guard and return 200', async () => {
+      await request(app.getHttpServer()).get('/auth/google').expect(200);
+    });
+  });
+
+  describe('GET /auth/google/callback', () => {
+    const sendUser = {
+      email: 'tam@gmail.com',
+      fullName: 'Tam',
+    };
+    it('should return tokens when user is new or already GOOGLE provider', async () => {
+      const result = {
+        accessToken: '1ekoqeok-022ke2-kkqok-dokdokdoqkw',
+        refreshToken: 'dnd2j09j09j0j0j20fj00f8408jc98w',
+      };
+      mockAuthService.googleLogin.mockResolvedValue(result);
+
+      const res = await request(app.getHttpServer())
+        .get('/auth/google/callback')
+        .send(sendUser)
+        .expect(200);
+
+      expect(res.body).toEqual(result);
+      expect(mockAuthService.googleLogin).toHaveBeenCalledWith(sendUser);
+    });
+
+    it('should return requireLinkConfirmation when email alraedy used with LOCAL provider', async () => {
+      const linkResult = {
+        requireLinkConfirmation: true,
+        pendingLinkToken: 'pending-jwt-token-xyz',
+      };
+      mockAuthService.googleLogin.mockResolvedValue(linkResult);
+
+      const res = await request(app.getHttpServer())
+        .get('/auth/google/callback')
+        .expect(200);
+
+      expect(res.body).toEqual(linkResult);
+    });
+
+    it('should return 401 if user not found after upsert failure', async () => {
+      mockAuthService.googleLogin.mockRejectedValue(
+        new UnauthorizedException('User not found'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/auth/google/callback')
+        .expect(401);
+    });
+  });
+
+  describe('POST /auth/google/confirm-link', () => {
+    const dto = { pendingLinkToken: 'pending-token-abc', password: '12345' };
+    it('should confirm linking and return token', async () => {
+      const result = {
+        accessToken: '1ekoqeok-022ke2-kkqok-dokdokdoqkw',
+        refreshToken: 'dnd2j09j09j0j0j20fj00f8408jc98w',
+      };
+      mockAuthService.confirmLinkGoogleAccount.mockResolvedValue(result);
+
+      const res = await request(app.getHttpServer())
+        .post('/auth/google/confirm-link')
+        .send(dto)
+        .expect(201);
+
+      expect(res.body).toEqual(result);
+      expect(mockAuthService.confirmLinkGoogleAccount).toHaveBeenCalledWith(
+        dto.pendingLinkToken,
+        dto.password,
+      );
+    });
+
+    it('should return 401 if password is wrong', async () => {
+      mockAuthService.confirmLinkGoogleAccount.mockRejectedValue(
+        new UnauthorizedException(' Invalid credentials'),
+      );
+
+      await request(app.getHttpServer())
+        .post('/auth/google/confirm-link')
+        .send(dto)
+        .expect(401);
+    });
+
+    it('should return 401 if pendingLinkToken is invalid/expired', async () => {
+      mockAuthService.confirmLinkGoogleAccount.mockRejectedValue(
+        new UnauthorizedException('Invalid credentials'),
+      );
+
+      await request(app.getHttpServer())
+        .post('/auth/google/confirm-link')
+        .send(dto)
+        .expect(401);
     });
   });
 });
