@@ -30,16 +30,17 @@ describe('UserController', () => {
     remove: jest.fn(),
   };
 
-  const mockAuthGuard = { canActivate: (context: ExecutionContext) => true };
-  const mockRolesGuard = { canActivate: () => true };
-
-  beforeEach(async () => {
-    mockAuthGuard.canActivate = (context: ExecutionContext) => {
+  const mockAuthGuard = {
+    canActivate: (context: ExecutionContext) => {
       const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = { sub: 'mockUserId' };
       return true;
-    };
-    mockRolesGuard.canActivate = () => true;
+    },
+  };
+  const mockRolesGuard = { canActivate: jest.fn(() => true) };
+
+  beforeEach(async () => {
+    mockRolesGuard.canActivate.mockReturnValue(true);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UserController],
       providers: [
@@ -104,7 +105,7 @@ describe('UserController', () => {
     });
 
     it('should return 403 if RolesGuard rejects(not Admin)', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       await request(app.getHttpServer())
         .post('/user')
         .send({ email: 'tam@gmail.com', password: '123456' })
@@ -132,7 +133,7 @@ describe('UserController', () => {
     });
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       await request(app.getHttpServer()).get(`/user`).expect(403);
 
       expect(mockUserService.findAll).not.toHaveBeenCalled();
@@ -167,7 +168,7 @@ describe('UserController', () => {
     });
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       await request(app.getHttpServer()).get(`/user/${id}`).expect(403);
 
       expect(mockUserService.findOne).not.toHaveBeenCalled();
@@ -239,7 +240,7 @@ describe('UserController', () => {
     });
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       await request(app.getHttpServer())
         .patch(`/user/${id}`)
         .send(dto)
@@ -274,7 +275,7 @@ describe('UserController', () => {
     });
 
     it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       await request(app.getHttpServer()).delete(`/user/${id}`).expect(403);
 
       expect(mockUserService.remove).not.toHaveBeenCalled();
