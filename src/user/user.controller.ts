@@ -15,6 +15,7 @@ import { UpdateUserDto } from 'src/dto/update-user.dto';
 import { Roles } from 'src/decorator/role.decorator';
 import { UserRole } from 'src/enum/userRole.enum';
 import { UpdateUserAdminDto } from 'src/dto/update-user-admin.dto';
+import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 
 @Controller('user')
 export class UserController {
@@ -34,7 +35,7 @@ export class UserController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ValidateObjectIdPipe) id: string) {
     return this.userService.findOne(id);
   }
 
@@ -46,7 +47,7 @@ export class UserController {
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   updateAdmin(
-    @Param('id') id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
     @Body() updateUserDto: UpdateUserAdminDto,
   ) {
     return this.userService.updateAdmin(id, updateUserDto);
@@ -54,7 +55,7 @@ export class UserController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ValidateObjectIdPipe) id: string) {
     return this.userService.remove(id);
   }
 }

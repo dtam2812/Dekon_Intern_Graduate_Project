@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LogInUserDto } from 'src/dto/logIn-user.dto';
 import { RefreshTokenDto } from 'src/dto/refresh-token.dto';
@@ -21,6 +30,7 @@ export class AuthController {
   }
 
   @Public()
+  @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   logIn(
@@ -29,6 +39,7 @@ export class AuthController {
     return this.authService.logIn(dto);
   }
 
+  @Public()
   @Post('refresh')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   refreshToken(

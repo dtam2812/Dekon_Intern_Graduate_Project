@@ -14,8 +14,8 @@ import { FilterOrderDto } from 'src/dto/filter-order.dto';
 import { Roles } from 'src/decorator/role.decorator';
 import { UserRole } from 'src/enum/userRole.enum';
 import { UpdateOrderStatusDto } from 'src/dto/update-order-status.dto';
-import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { Order } from 'src/schemas/order.schema';
+import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 
 @Controller('order')
 export class OrderController {
@@ -49,7 +49,7 @@ export class OrderController {
 
   @Get(':id')
   findOne(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
     @Req() req: any,
   ): Promise<Order> {
     return this.orderService.findOne(id, {
@@ -61,7 +61,7 @@ export class OrderController {
   @Patch('updatePaymentStatus/:id')
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   updatePaymentStatus(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
     @Req() req: any,
   ): Promise<Order> {
     return this.orderService.updatePaymentStatus(id, req.user);
@@ -70,7 +70,7 @@ export class OrderController {
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   updateOrderStatus(
-    @Param('id', ParseObjectIdPipe) orderId: string,
+    @Param('id', ValidateObjectIdPipe) orderId: string,
     @Body() updateOrderStatus: UpdateOrderStatusDto,
     @Req() req: any,
   ): Promise<Order> {
