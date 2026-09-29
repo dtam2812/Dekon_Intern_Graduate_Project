@@ -90,11 +90,21 @@
       "<rootDir>/.."
     ],
     "testRegex": ".*\\.spec\\.ts$",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    },
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "allowJs": true
+          }
+        }
+      ]
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@nestjs|mongoose|nestjs-pino)/)"
+      "/node_modules/(?!(@nestjs)/)"
     ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
