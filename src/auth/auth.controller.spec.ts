@@ -6,10 +6,15 @@ import {
   ExecutionContext,
   INestApplication,
   UnauthorizedException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/guard/role.guard';
 import request from 'supertest';
+
+interface RequestWithUser {
+  user?: { sub?: string; email?: string; fullName?: string };
+}
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -28,7 +33,7 @@ describe('AuthController', () => {
   const mockAuthGuard: { canActivate: (context: ExecutionContext) => boolean } =
     {
       canActivate: (context: ExecutionContext) => {
-        const req = context.switchToHttp().getRequest();
+        const req = context.switchToHttp().getRequest<RequestWithUser>();
         req.user = { sub: 'mockUserId' };
         return true;
       },
@@ -41,7 +46,7 @@ describe('AuthController', () => {
     canActivate: (context: ExecutionContext) => boolean;
   } = {
     canActivate: (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = {
         email: 'tam@gmail.com',
         fullName: 'Tam',
@@ -52,7 +57,7 @@ describe('AuthController', () => {
 
   beforeEach(async () => {
     mockAuthGuard.canActivate = (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = { sub: 'mockUserId' };
       return true;
     };
@@ -72,6 +77,9 @@ describe('AuthController', () => {
     controller = module.get<AuthController>(AuthController);
     app = module.createNestApplication();
     app.useGlobalGuards(mockAuthGuard, mockRolesGuard);
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
     await app.init();
   });
 
@@ -89,9 +97,9 @@ describe('AuthController', () => {
 
   describe('POST /auth/register', () => {
     const dto = {
-      fullName: 'abcd',
+      fullName: 'abcdef',
       email: 'tam@gmail.com',
-      password: '12345',
+      password: '123456',
     };
     it('should let a user register new account and return 201', async () => {
       const result = {
@@ -113,7 +121,7 @@ describe('AuthController', () => {
   describe('POST /auth/login', () => {
     const logInDto = {
       email: 'tam@gmail.com',
-      password: '12345',
+      password: '123456',
     };
 
     const result = {
@@ -308,7 +316,7 @@ describe('AuthController', () => {
   });
 
   describe('POST /auth/google/confirm-link', () => {
-    const dto = { pendingLinkToken: 'pending-token-abc', password: '12345' };
+    const dto = { pendingLinkToken: 'pending-token-abc', password: '123456' };
     it('should confirm linking and return token', async () => {
       const result = {
         accessToken: '1ekoqeok-022ke2-kkqok-dokdokdoqkw',

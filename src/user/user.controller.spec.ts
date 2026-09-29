@@ -5,11 +5,17 @@ import {
   ExecutionContext,
   INestApplication,
   NotFoundException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/guard/role.guard';
 import request from 'supertest';
+import { TransformInterceptor } from 'src/interceptor/transform.interceptor';
+
+interface RequestWithUser {
+  user?: { sub?: string; email?: string; fullName?: string };
+}
 
 describe('UserController', () => {
   let controller: UserController;
@@ -24,12 +30,12 @@ describe('UserController', () => {
     remove: jest.fn(),
   };
 
-  const mockAuthGuard = { canActivate: () => true };
+  const mockAuthGuard = { canActivate: (context: ExecutionContext) => true };
   const mockRolesGuard = { canActivate: () => true };
 
   beforeEach(async () => {
     mockAuthGuard.canActivate = (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = { sub: 'mockUserId' };
       return true;
     };
@@ -50,6 +56,10 @@ describe('UserController', () => {
     controller = module.get<UserController>(UserController);
     app = module.createNestApplication();
     app.useGlobalGuards(mockAuthGuard, mockRolesGuard);
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
+    app.useGlobalInterceptors(new TransformInterceptor());
     await app.init();
   });
 
@@ -68,9 +78,9 @@ describe('UserController', () => {
   describe('POST /user', () => {
     it('should create user and return 201', async () => {
       const dto = {
-        fullName: 'abcd',
+        fullName: 'abcdef',
         email: 'tam@gmail.com',
-        password: '12345',
+        password: '123456',
         role: 'admin',
         provider: 'local',
       };
@@ -89,7 +99,7 @@ describe('UserController', () => {
         .send(dto)
         .expect(201);
 
-      expect(res.body).toEqual(result);
+      expect(res.body).toEqual({ data: result });
       expect(mockUserService.create).toHaveBeenCalledWith(dto);
     });
 
@@ -117,7 +127,7 @@ describe('UserController', () => {
       mockUserService.findAll.mockResolvedValue(users);
       const res = await request(app.getHttpServer()).get('/user').expect(200);
 
-      expect(res.body).toEqual(users);
+      expect(res.body).toEqual({ data: users });
       expect(mockUserService.findAll).toHaveBeenCalled();
     });
 
@@ -144,7 +154,7 @@ describe('UserController', () => {
         .get(`/user/${user.id}`)
         .expect(200);
 
-      expect(res.body).toEqual(user);
+      expect(res.body).toEqual({ data: user });
       expect(mockUserService.findOne).toHaveBeenCalledWith(id);
     });
 
@@ -166,9 +176,9 @@ describe('UserController', () => {
 
   describe('PATCH /user/updateInfo', () => {
     const dto = {
-      fullName: 'abcd',
+      fullName: 'abcdef',
       email: 'tam@gmail.com',
-      password: '12345',
+      password: '123456',
     };
     const id = '507f1f77bcf86cd799439011';
     it("should return 200 and update a user's information", async () => {
@@ -184,35 +194,34 @@ describe('UserController', () => {
         .send(dto)
         .expect(200);
 
-      expect(res.body).toEqual(result);
+      expect(res.body).toEqual({ data: result });
       expect(mockUserService.update).toHaveBeenCalledWith('mockUserId', dto);
     });
   });
 
   describe('PATCH /user/:id', () => {
     const dto = {
-      fullName: 'abcd',
+      fullName: 'abcdef',
       email: 'tam@gmail.com',
-      password: '12345',
+      password: '123456',
       role: 'customer',
     };
     const id = '507f1f77bcf86cd799439011';
 
     it("should return 200 and update a user info (admin's action)", async () => {
       const result = {
-        fullName: 'abcd',
+        fullName: 'abcdef',
         email: 'tam@gmail.com',
-        password: '12345',
         role: 'customer',
       };
-      mockUserService.updateAdmin.mockResolvedValue(dto);
+      mockUserService.updateAdmin.mockResolvedValue(result);
 
       const res = await request(app.getHttpServer())
         .patch(`/user/${id}`)
         .send(dto)
         .expect(200);
 
-      expect(res.body).toEqual(result);
+      expect(res.body).toEqual({ data: result });
       expect(mockUserService.updateAdmin).toHaveBeenCalledWith(id, dto);
     });
 
@@ -250,7 +259,7 @@ describe('UserController', () => {
         .delete(`/user/${id}`)
         .expect(200);
 
-      expect(res.body).toEqual(result);
+      expect(res.body).toEqual({ data: result });
       expect(mockUserService.remove).toHaveBeenCalledWith(id);
     });
 
