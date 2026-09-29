@@ -39,10 +39,14 @@ export class OrderService {
     const product = await this.productModel.findById(productId);
 
     if (!product) {
+      this.logger.warn(`Stock check failed: product ${productId} not found`);
       throw new NotFoundException('Product not found');
     }
 
     if (product.stock < quantity) {
+      this.logger.warn(
+        `Stock check failed: product ${productId} has ${product.stock}, requested ${quantity}`,
+      );
       throw new BadRequestException('Product insufficient stock');
     }
 
@@ -87,11 +91,16 @@ export class OrderService {
         secret: process.env.ORDER_TOKEN_SECRET,
       });
     } catch {
+      this.logger.warn('Order token verification failed (invalid or expired)');
       throw new BadRequestException('Invalid or expired token');
     }
   }
 
   async create(customerId: string, dto: CreateOrderDto): Promise<Order> {
+    this.logger.log(
+      `Creating order for user ${customerId} with ${dto.items.length} item(s)`,
+    );
+
     await Promise.all(
       dto.items.map(async (element) => {
         const enough = await this.checkStock(
@@ -131,6 +140,9 @@ export class OrderService {
           );
 
           if (!product) {
+            this.logger.warn(
+              `Order for user ${customerId} rejected: product ${element.productId} out of stock`,
+            );
             throw new BadRequestException('This product is out of stock');
           }
 
@@ -177,6 +189,10 @@ export class OrderService {
     } finally {
       await session.endSession();
     }
+
+    this.logger.log(
+      `Order ${order._id.toString()} created for user ${customerId}`,
+    );
 
     const customer = await this.userModel.findById(customerId);
     const token = await this.signOrderToken(order._id.toString(), customerId);
@@ -233,8 +249,13 @@ export class OrderService {
     );
 
     if (!order) {
+      this.logger.warn(
+        `Confirm failed: order ${orderId} not found or already processed`,
+      );
       throw new NotFoundException('Order not found or already processed');
     }
+
+    this.logger.log(`Order ${orderId} confirmed by user ${userId}`);
 
     const customer = await this.userModel.findById(userId);
 
@@ -280,6 +301,9 @@ export class OrderService {
         );
 
         if (!updated) {
+          this.logger.warn(
+            `Cancel failed: order ${orderId} not found or already processed`,
+          );
           throw new NotFoundException('Order not found or already processed');
         }
 
@@ -296,6 +320,10 @@ export class OrderService {
     } finally {
       await session.endSession();
     }
+
+    this.logger.log(
+      `Order ${orderId} cancelled by user ${userId}, stock restored`,
+    );
 
     const customer = await this.userModel.findById(userId);
 
@@ -357,12 +385,14 @@ export class OrderService {
       .populate('orderStatusHistory.changedBy', 'name role');
 
     if (!order) {
+      this.logger.warn(`Order ${id} not found`);
       throw new NotFoundException('Order not found');
     }
     const isOwner = order.userId._id.toString() === requester.userId;
     const isAdminOrStaff = ['staff', 'admin'].includes(requester.role);
 
     if (!isOwner && !isAdminOrStaff) {
+      this.logger.warn(`User ${requester.userId} denied access to order ${id}`);
       throw new ForbiddenException('You do not have access to this order');
     }
 
@@ -380,6 +410,9 @@ export class OrderService {
     requester: { userId: string; role: string },
   ): Promise<Order> {
     if (!['staff', 'admin'].includes(requester.role)) {
+      this.logger.warn(
+        `User ${requester.userId} denied payment status update on order ${id}`,
+      );
       throw new ForbiddenException('You do not have access to this order');
     }
 
@@ -396,15 +429,21 @@ export class OrderService {
     if (!order) {
       const existing = await this.orderModel.findById(id);
       if (!existing) {
+        this.logger.warn(`Payment update failed: order ${id} not found`);
         throw new NotFoundException('Order not found');
       }
       if (existing.status === OrderStatus.CANCELLED) {
+        this.logger.warn(`Payment update failed: order ${id} is cancelled`);
         throw new BadRequestException(
           'Cannot update payment status for a cancelled order',
         );
       }
+      this.logger.warn(`Payment update failed: order ${id} already paid`);
       throw new BadRequestException('Order is already marked as paid');
     }
+
+    this.logger.log(`Order ${id} marked as paid by user ${requester.userId}`);
+
     const customer = await this.userModel
       .findById(order.userId)
       .select('email fullName');
@@ -442,11 +481,15 @@ export class OrderService {
 
     const order = await this.orderModel.findById(orderId);
     if (!order) {
+      this.logger.warn(`Status update failed: order ${orderId} not found`);
       throw new NotFoundException('Order not found');
     }
 
     const currentStatus = order.status;
     if (!allowedTransitions[currentStatus].includes(dto.newStatus)) {
+      this.logger.warn(
+        `Status update rejected for order ${orderId}: ${currentStatus} -> ${dto.newStatus} not allowed`,
+      );
       throw new BadRequestException(
         `Cannot change order status from "${currentStatus}" to "${dto.newStatus}"`,
       );
@@ -491,6 +534,9 @@ export class OrderService {
         );
 
         if (!result) {
+          this.logger.warn(
+            `Status update conflict on order ${orderId}: status changed concurrently`,
+          );
           throw new ConflictException(
             'Order status was changed by someone else, please reload and try again',
           );
@@ -501,6 +547,10 @@ export class OrderService {
     } finally {
       await session.endSession();
     }
+
+    this.logger.log(
+      `Order ${orderId} status changed ${currentStatus} -> ${dto.newStatus} by user ${adminId}`,
+    );
 
     const customer = await this.userModel
       .findById(updated.userId)

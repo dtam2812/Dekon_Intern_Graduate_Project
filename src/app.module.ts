@@ -36,7 +36,42 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     }),
     MongooseModule.forRoot(process.env.MONGODB_URI!),
     AuthModule,
-    LoggerModule.forRoot(),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                  translateTime: 'SYS:HH:MM:ss',
+                  ignore: 'pid,hostname,res',
+                },
+              }
+            : undefined,
+
+        serializers: {
+          req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+          res: (res) => ({ statusCode: res.statusCode }),
+        },
+
+        redact: ['req.headers.authorization', 'req.headers.cookie'],
+
+        customLogLevel: (_req, res, err) => {
+          if (err || res.statusCode >= 500) return 'error';
+          if (res.statusCode >= 400) return 'warn';
+          return 'info';
+        },
+
+        customSuccessMessage: (req, res) =>
+          `${req.method} ${req.url} ${res.statusCode}`,
+        customErrorMessage: (req, res) =>
+          `${req.method} ${req.url} ${res.statusCode}`,
+      },
+    }),
     MailerModule.forRootAsync({
       useFactory: () => {
         const port = Number(process.env.SMTP_PORT ?? 587);

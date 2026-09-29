@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
+import { Logger } from 'nestjs-pino';
 import {
   RefreshToken,
   RefreshTokenDocument,
@@ -32,6 +33,7 @@ export class AuthService {
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshTokenDocument>,
     private readonly jwtService: JwtService,
+    private readonly logger: Logger,
   ) {}
 
   private async issueToken(
@@ -85,10 +87,12 @@ export class AuthService {
       const existedEmail = await this.userModel.findOne({ email: dto.email });
 
       if (existedEmail) {
+        this.logger.warn('Registration failed: email already used');
         throw new ConflictException('This email has been used');
       }
 
       if (!dto.password) {
+        this.logger.warn('Registration failed: password is required');
         throw new UnauthorizedException('Password is required');
       }
 
@@ -102,6 +106,8 @@ export class AuthService {
         provider: AuthProvider.LOCAL,
       });
 
+      this.logger.log(`User ${user.id} registered`);
+
       const familyId = crypto.randomUUID();
 
       return this.issueToken(
@@ -114,6 +120,7 @@ export class AuthService {
       );
     } catch (error) {
       if (error.code === 11000) {
+        this.logger.warn('Registration failed: duplicate email (index)');
         throw new ConflictException('This email has been used');
       }
       throw error;
@@ -128,10 +135,12 @@ export class AuthService {
       .select('+password');
 
     if (!user) {
+      this.logger.warn('Login failed: user not found');
       throw new UnauthorizedException('User not found');
     }
 
     if (!user.password) {
+      this.logger.warn(`Login failed: user ${user.id} must use Google login`);
       throw new UnauthorizedException('Please use Google to log in');
     }
 
@@ -141,8 +150,11 @@ export class AuthService {
     );
 
     if (!isMatchedPassword) {
+      this.logger.warn(`Login failed: wrong password for user ${user.id}`);
       throw new UnauthorizedException('Invalid email or password');
     }
+
+    this.logger.log(`User ${user.id} logged in`);
 
     const familyId = crypto.randomUUID();
 
@@ -177,10 +189,14 @@ export class AuthService {
           .populate<{ userId: UserDocument }>('userId');
 
         if (!record) {
+          this.logger.warn('Refresh failed: token not found');
           throw new ConflictException('Invalid token');
         }
 
         if (record.revoked === true) {
+          this.logger.warn(
+            `Refresh token reuse detected (family ${record.familyId}), revoking the whole family`,
+          );
           await this.refreshTokenModel.updateMany(
             { familyId: record.familyId },
             { revoked: true },
@@ -191,6 +207,9 @@ export class AuthService {
         }
 
         if (record.expiresAt < new Date()) {
+          this.logger.warn(
+            `Refresh failed: token expired (family ${record.familyId})`,
+          );
           throw new ConflictException('Invalid token');
         }
 
@@ -204,6 +223,9 @@ export class AuthService {
         );
 
         if (consumeResult.matchedCount === 0) {
+          this.logger.warn(
+            `Concurrent refresh token reuse detected (family ${record.familyId}), revoking the whole family`,
+          );
           await this.refreshTokenModel.updateMany(
             { familyId: record.familyId },
             { revoked: true },
@@ -229,6 +251,7 @@ export class AuthService {
       if (reuseDetected || !result) {
         throw new ConflictException('Invalid token');
       }
+      this.logger.log('Refresh token rotated successfully');
       return result;
     } finally {
       await session.endSession();
@@ -243,6 +266,8 @@ export class AuthService {
       { revoked: true },
     );
 
+    this.logger.log('Refresh token revoked on logout');
+
     return { message: 'Logged out successfully' };
   }
 
@@ -252,6 +277,9 @@ export class AuthService {
     });
 
     if (existedEmail && existedEmail.provider === AuthProvider.LOCAL) {
+      this.logger.log(
+        `Google login for user ${existedEmail.id} requires account link confirmation`,
+      );
       return this.creatingPendingLinkToken(existedEmail, googleUser);
     }
 
@@ -271,6 +299,9 @@ export class AuthService {
       );
     } catch (error) {
       if (error.code === 11000) {
+        this.logger.warn(
+          'Google login upsert conflict, fetching the existing user instead',
+        );
         user = await this.userModel.findOne({ email: googleUser.email });
       } else {
         throw error;
@@ -278,8 +309,11 @@ export class AuthService {
     }
 
     if (!user) {
+      this.logger.warn('Google login failed: user not found after upsert');
       throw new UnauthorizedException('User not found');
     }
+
+    this.logger.log(`User ${user.id} logged in with Google`);
 
     const familyId = crypto.randomUUID();
     return this.issueToken(
@@ -307,6 +341,8 @@ export class AuthService {
       },
     );
 
+    this.logger.log(`Pending link token issued for user ${existedUser.id}`);
+
     return { requireLinkConfirmation: true, pendingLinkToken };
   }
 
@@ -316,29 +352,40 @@ export class AuthService {
     try {
       payload = this.jwtService.verify(pendingLinkToken);
     } catch (error) {
+      this.logger.warn('Google link failed: link token invalid or expired');
       throw new UnauthorizedException('Link token invalid or expired');
     }
 
     if (payload.purpose !== 'google-link') {
+      this.logger.warn(
+        `Google link failed: invalid token purpose for user ${payload.sub}`,
+      );
       throw new UnauthorizedException('Invalid token purpose');
     }
 
     const user = await this.userModel.findById(payload.sub).select('+password');
     if (!user) {
+      this.logger.warn(`Google link failed: user ${payload.sub} not found`);
       throw new UnauthorizedException('User not found');
     }
 
     if (!user.password) {
+      this.logger.warn(`Google link failed: user ${user.id} has no password`);
       throw new UnauthorizedException('Password is required');
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
+      this.logger.warn(
+        `Google link failed: wrong password for user ${user.id}`,
+      );
       throw new UnauthorizedException('Invalid password');
     }
 
     user.provider = AuthProvider.GOOGLE;
     await user.save();
+
+    this.logger.log(`Google account linked for user ${user.id}`);
 
     const familyId = crypto.randomUUID();
     return this.issueToken(
