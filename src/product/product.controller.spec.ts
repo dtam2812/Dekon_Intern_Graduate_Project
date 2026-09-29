@@ -29,6 +29,10 @@ jest.mock('src/filter/cleanup-uploaded-files.filter', () => {
   return { CleanupUploadedFilesFilter: class extends BaseExceptionFilter {} };
 });
 
+interface RequestWithUser {
+  user?: { sub?: string; email?: string; fullName?: string };
+}
+
 describe('ProductController', () => {
   let controller: ProductController;
   let app: INestApplication;
@@ -41,16 +45,17 @@ describe('ProductController', () => {
     remove: jest.fn(),
   };
 
-  const mockAuthGuard = { canActivate: (context: ExecutionContext) => true };
-  const mockRolesGuard = { canActivate: () => true };
-
-  beforeEach(async () => {
-    mockAuthGuard.canActivate = (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
+  const mockAuthGuard = {
+    canActivate: (context: ExecutionContext) => {
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = { sub: 'mockUserId' };
       return true;
-    };
-    mockRolesGuard.canActivate = () => true;
+    },
+  };
+  const mockRolesGuard = { canActivate: jest.fn(() => true) };
+
+  beforeEach(async () => {
+    mockRolesGuard.canActivate.mockReturnValue(true);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProductController],
       providers: [{ provide: ProductService, useValue: mockProductService }],
@@ -145,7 +150,7 @@ describe('ProductController', () => {
     });
 
     it("should return 403 if user's role is not admin", async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
 
       await request(app.getHttpServer())
         .post('/product')
@@ -305,7 +310,7 @@ describe('ProductController', () => {
     });
 
     it("should return 403 if user's role is not admin", async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
 
       await request(app.getHttpServer())
         .patch(`/product/${id}`)
@@ -373,7 +378,7 @@ describe('ProductController', () => {
     });
 
     it("should return 403 if user's role is not admin", async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
 
       await request(app.getHttpServer()).delete(`/product/${id}`).expect(403);
 

@@ -14,6 +14,10 @@ import { CategoryService } from './category.service';
 import { AuthGuard } from 'src/guard/auth.guard';
 import { RolesGuard } from 'src/guard/role.guard';
 
+interface RequestWithUser {
+  user?: { sub?: string; email?: string; fullName?: string };
+}
+
 describe('CategoryController', () => {
   let controller: CategoryController;
   let app: INestApplication;
@@ -26,16 +30,17 @@ describe('CategoryController', () => {
     remove: jest.fn(),
   };
 
-  const mockAuthGuard = { canActivate: (context: ExecutionContext) => true };
-  const mockRolesGuard = { canActivate: () => true };
-
-  beforeEach(async () => {
-    mockAuthGuard.canActivate = (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
+  const mockAuthGuard = {
+    canActivate: (context: ExecutionContext) => {
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
       req.user = { sub: 'mockUserId' };
       return true;
-    };
-    mockRolesGuard.canActivate = () => true;
+    },
+  };
+  const mockRolesGuard = { canActivate: jest.fn(() => true) };
+
+  beforeEach(async () => {
+    mockRolesGuard.canActivate.mockReturnValue(true);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CategoryController],
       providers: [
@@ -106,7 +111,7 @@ describe('CategoryController', () => {
     });
 
     it('should return 403 if user role is not admin', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
       mockCategoryService.create.mockRejectedValue(
         new ForbiddenException('Role is not admin'),
       );
@@ -191,7 +196,7 @@ describe('CategoryController', () => {
     });
 
     it('should return 403 if user role is not admin', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
 
       await request(app.getHttpServer())
         .patch(`/category/${id}`)
@@ -251,7 +256,7 @@ describe('CategoryController', () => {
     });
 
     it('should return 403 if user role is not admin', async () => {
-      mockRolesGuard.canActivate = () => false;
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
 
       await request(app.getHttpServer()).delete(`/category/${id}`).expect(403);
 
