@@ -14,7 +14,7 @@ import { Roles } from 'src/decorator/role.decorator';
 import { UserRole } from 'src/enum/userRole.enum';
 import { Public } from 'src/decorator/public.decorator';
 import { Category } from 'src/schemas/category.schema';
-import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 
 @Controller('category')
 export class CategoryController {
@@ -34,14 +34,14 @@ export class CategoryController {
 
   @Public()
   @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Category> {
+  findOne(@Param('id', ValidateObjectIdPipe) id: string): Promise<Category> {
     return this.categoryService.findOne(id);
   }
 
   @Roles(UserRole.ADMIN)
   @Patch(':id')
   update(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<Category> {
     return this.categoryService.update(id, updateCategoryDto);
@@ -50,7 +50,7 @@ export class CategoryController {
   @Roles(UserRole.ADMIN)
   @Delete(':id')
   remove(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
   ): Promise<{ message: string }> {
     return this.categoryService.remove(id);
   }
