@@ -86,10 +86,16 @@
       "ts"
     ],
     "rootDir": "src",
+    "modulePaths": [
+      "<rootDir>/.."
+    ],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@nestjs|mongoose|nestjs-pino)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

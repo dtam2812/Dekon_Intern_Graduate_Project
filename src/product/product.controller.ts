@@ -21,12 +21,12 @@ import { UserRole } from 'src/enum/userRole.enum';
 import { Public } from 'src/decorator/public.decorator';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Product } from 'src/schemas/product.schema';
-import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { storageConfig } from 'src/helpers/config';
 import { extname } from 'path';
 import { FilterProductDto } from 'src/dto/filter-product.dto';
 import { CleanupUploadedFilesFilter } from 'src/filter/cleanup-uploaded-files.filter';
 import { ValidateImageFilesPipe } from 'src/pipe/validate-image-file.pipe';
+import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 
 @Controller('product')
 export class ProductController {
@@ -70,7 +70,7 @@ export class ProductController {
 
   @Public()
   @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Product> {
+  findOne(@Param('id', ValidateObjectIdPipe) id: string): Promise<Product> {
     return this.productService.findOne(id);
   }
 
@@ -95,7 +95,7 @@ export class ProductController {
     }),
   )
   update(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
     @UploadedFiles(ValidateImageFilesPipe) files: Express.Multer.File[],
     @Req() req,
@@ -111,7 +111,7 @@ export class ProductController {
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   remove(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ValidateObjectIdPipe) id: string,
   ): Promise<{ message: string }> {
     return this.productService.remove(id);
   }
