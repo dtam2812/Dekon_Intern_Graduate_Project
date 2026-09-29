@@ -192,7 +192,7 @@ describe('CategoryController', () => {
         .expect(200);
 
       expect(res.body).toEqual(result);
-      expect(mockCategoryService.remove).toHaveBeenCalledWith(id, dto);
+      expect(mockCategoryService.update).toHaveBeenCalledWith(id, dto);
     });
 
     it('should return 403 if user role is not admin', async () => {
