@@ -259,6 +259,16 @@ describe('AuthService', () => {
         { session: mockSession },
       );
       expect(mockRefreshTokenModel.updateMany).not.toHaveBeenCalled();
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        {
+          sub: userId,
+          email: mockUser.email,
+          fullName: mockUser.fullName,
+          role: mockUser.role,
+          purpose: 'access',
+        },
+        { expiresIn: '15m' },
+      );
       expect(mockSession.endSession).toHaveBeenCalled();
       expect(result).toEqual(expectedTokens);
     });

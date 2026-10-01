@@ -209,7 +209,7 @@ describe('UserService', () => {
     it("should update current user's information, with password", async () => {
       const dto = {
         fullName: 'tam dinh',
-        password: 'hashed-password',
+        password: 'password123',
       };
       mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
       mockHashPassword.mockResolvedValue('hashed-password');
@@ -261,7 +261,7 @@ describe('UserService', () => {
       const dto = {
         fullName: 'tam dinh',
         role: UserRole.STAFF,
-        password: 'hashed-password',
+        password: 'password123',
       };
       mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
       mockHashPassword.mockResolvedValue('hashed-password');
