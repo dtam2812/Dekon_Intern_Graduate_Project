@@ -72,7 +72,8 @@ export class ProductService {
       );
       await this.removeFiles(fileUrls);
       if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
+        const field =
+          Object.keys(error.keyPattern ?? error.keyValue ?? {})[0] ?? 'value';
         this.logger.warn(`Product creation conflict: duplicate ${field}`);
         throw new ConflictException(`This ${field} existed`);
       }
@@ -130,8 +131,16 @@ export class ProductService {
     files: Express.Multer.File[],
     adminId: string,
   ): Promise<Product> {
+    const newImageUrls =
+      files?.map((f) => `uploads/images/${f.filename}`) ?? [];
+
     if (dto.categoryId !== undefined) {
-      await this.assertCategoryExists(dto.categoryId);
+      try {
+        await this.assertCategoryExists(dto.categoryId);
+      } catch (error) {
+        await this.removeFiles(newImageUrls);
+        throw error;
+      }
     }
 
     const existing = files?.length
@@ -187,7 +196,8 @@ export class ProductService {
         await this.removeFiles(set.images);
       }
       if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
+        const field =
+          Object.keys(error.keyPattern ?? error.keyValue ?? {})[0] ?? 'value';
         this.logger.warn(
           `Product update conflict on ${id}: duplicate ${field}`,
         );

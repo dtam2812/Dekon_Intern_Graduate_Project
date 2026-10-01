@@ -24,10 +24,11 @@ export class CategoryService {
         slug: dto.slug,
       });
       this.logger.log(`Category ${category._id.toString()} created`);
-      return category;
+      return category.toJSON();
     } catch (err) {
       if (err.code === 11000) {
-        const field = Object.keys(err.keyPattern)[0];
+        const field =
+          Object.keys(err.keyPattern ?? err.keyValue ?? {})[0] ?? 'value';
         this.logger.warn(`Category creation conflict: duplicate ${field}`);
         throw new ConflictException(`This ${field} existed`);
       }
@@ -63,7 +64,8 @@ export class CategoryService {
       return cate.toJSON();
     } catch (err) {
       if (err.code === 11000) {
-        const field = Object.keys(err.keyPattern)[0];
+        const field =
+          Object.keys(err.keyPattern ?? err.keyValue ?? {})[0] ?? 'value';
         this.logger.warn(
           `Category update conflict on ${id}: duplicate ${field}`,
         );
