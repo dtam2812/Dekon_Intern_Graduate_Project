@@ -36,6 +36,7 @@ describe('OrderController', () => {
     findOrdersByCustomer: jest.fn(),
     updatePaymentStatus: jest.fn(),
     updateOrderStatus: jest.fn(),
+    updateShippingAddress: jest.fn(),
   };
 
   const mockAuthGuard = {
@@ -545,6 +546,85 @@ describe('OrderController', () => {
         .patch(`/order/${id}`)
         .send(dto)
         .expect(409);
+    });
+  });
+
+  describe('PATCH /order/shippingAddress/:id', () => {
+    const dto = {
+      houseNumber: '1A',
+      street: 'Nguyen Hue',
+      ward: 'Ben Nghe',
+      district: '1',
+      city: 'HCM',
+      country: 'VietNam',
+      note: 'Giao buoi sang',
+    };
+    const id = '507f1f77bcf86cd799439011';
+
+    it("should return 200 and update the order's shipping address", async () => {
+      const result = {
+        id,
+        status: OrderStatus.CONFIRMED,
+        shippingAddress: dto,
+      };
+      mockOrderService.updateShippingAddress.mockResolvedValue(result);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/order/shippingAddress/${id}`)
+        .send(dto)
+        .expect(200);
+
+      expect(res.body).toEqual({ data: result });
+      expect(mockOrderService.updateShippingAddress).toHaveBeenCalledWith(
+        id,
+        dto,
+        'mockUserId',
+      );
+    });
+
+    it('should return 400 if id is invalid', async () => {
+      const invalidId = 'invalid';
+      await request(app.getHttpServer())
+        .patch(`/order/shippingAddress/${invalidId}`)
+        .send(dto)
+        .expect(400);
+
+      expect(mockOrderService.updateShippingAddress).not.toHaveBeenCalled();
+    });
+
+    it('should return 404 if the order does not exist', async () => {
+      mockOrderService.updateShippingAddress.mockRejectedValue(
+        new NotFoundException('Order not found'),
+      );
+
+      await request(app.getHttpServer())
+        .patch(`/order/shippingAddress/${id}`)
+        .send(dto)
+        .expect(404);
+    });
+
+    it('should return 409 if the order is already being shipped', async () => {
+      mockOrderService.updateShippingAddress.mockRejectedValue(
+        new ConflictException(
+          'Order is being shipped, shipping address cannot be changed',
+        ),
+      );
+
+      await request(app.getHttpServer())
+        .patch(`/order/shippingAddress/${id}`)
+        .send(dto)
+        .expect(409);
+    });
+
+    it('should return 403 if the order belongs to another user', async () => {
+      mockOrderService.updateShippingAddress.mockRejectedValue(
+        new ForbiddenException('You do not have access to this order'),
+      );
+
+      await request(app.getHttpServer())
+        .patch(`/order/shippingAddress/${id}`)
+        .send(dto)
+        .expect(403);
     });
   });
 });
