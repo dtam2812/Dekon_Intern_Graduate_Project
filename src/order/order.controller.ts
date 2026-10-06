@@ -9,7 +9,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CreateOrderDto } from 'src/dto/create-order.dto';
+import { CreateOrderDto, ShippingAddressDto } from 'src/dto/create-order.dto';
 import { FilterOrderDto } from 'src/dto/filter-order.dto';
 import { Roles } from 'src/decorator/role.decorator';
 import { UserRole } from 'src/enum/userRole.enum';
@@ -77,6 +77,19 @@ export class OrderController {
     return this.orderService.updateOrderStatus(
       orderId,
       updateOrderStatus,
+      req.user.sub,
+    );
+  }
+
+  @Patch('/shippingAddress/:id')
+  updateShippingAddress(
+    @Param('id', ValidateObjectIdPipe) orderId: string,
+    @Body() shippingAddressDto: ShippingAddressDto,
+    @Req() req: any,
+  ): Promise<Order> {
+    return this.orderService.updateShippingAddress(
+      orderId,
+      shippingAddressDto,
       req.user.sub,
     );
   }

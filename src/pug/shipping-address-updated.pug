@@ -1,0 +1,104 @@
+-
+  const brand = '#4f46e5'
+  const green = '#16a34a'
+  const red = '#dc2626'
+  const ink = '#111827'
+  const muted = '#6b7280'
+  const line = '#e5e7eb'
+  const pageBg = '#f3f4f6'
+  const font = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+  const shop = shopName || 'Our Shop'
+  const who = name || 'there'
+  const orderCode = String((order && order.id) || '').slice(-8).toUpperCase()
+  const isNumeric = (v) => v != null && /^\d+$/.test(String(v).trim())
+  const hasValue = (v) => v != null && String(v).trim() !== ''
+  const formatAddress = (a) => {
+    a = a || {}
+    const streetPart = hasValue(a.street)
+      ? (isNumeric(a.street) ? `Street ${a.street}` : `${a.street} Street`)
+      : ''
+    const wardPart = hasValue(a.ward)
+      ? (isNumeric(a.ward) ? `Ward ${a.ward}` : `${a.ward} Ward`)
+      : ''
+    const districtPart = hasValue(a.district)
+      ? (isNumeric(a.district) ? `District ${a.district}` : `${a.district} District`)
+      : ''
+    return [
+      a.houseNumber,
+      streetPart,
+      wardPart,
+      districtPart,
+      a.city ? `${a.city} City` : '',
+      a.country,
+    ].filter(hasValue).join(', ')
+  }
+  const oldAddr = formatAddress(oldAddress)
+  const newAddr = formatAddress(newAddress || (order && order.shippingAddress))
+  const label = `margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${muted};`
+  const text = `margin:0 0 4px;font-size:15px;line-height:22px;color:${ink};`
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    meta(http-equiv="X-UA-Compatible" content="IE=edge")
+    title Shipping address updated for order #{orderCode}
+  body(style=`margin:0;padding:0;background:${pageBg};`)
+    //- Preheader: the grey preview text shown next to the subject in the inbox
+    div(style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#f3f4f6;")
+      | The shipping address of your order ##{orderCode} has been updated successfully.
+    table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:${pageBg};`)
+      tr
+        td(align="center" style="padding:24px 12px;")
+          table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`max-width:600px;background:#ffffff;border:1px solid ${line};border-radius:12px;overflow:hidden;font-family:${font};`)
+            //- Header
+            tr
+              td(style=`background:${brand};padding:22px 32px;`)
+                span(style="font-size:20px;font-weight:700;letter-spacing:0.3px;color:#ffffff;") #{shop}
+            //- Title + intro
+            tr
+              td(style="padding:32px 32px 8px;")
+                p(style=label) Order ##{orderCode}
+                h1(style=`margin:0 0 12px;font-size:26px;line-height:32px;font-weight:700;color:${ink};`) Shipping address updated
+                p(style=`margin:0;font-size:15px;line-height:24px;color:${muted};`)
+                  | Hi #{who}, the shipping address of your order has been
+                  |
+                  strong(style=`color:${green};`) updated successfully
+                  | . Your order will be delivered to the new address below.
+            //- Old address
+            tr
+              td(style="padding:24px 32px 8px;")
+                table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:#f9fafb;border:1px solid ${line};border-radius:8px;`)
+                  tr
+                    td(style="padding:16px 18px;")
+                      p(style=label) Previous address
+                      p(style=`margin:0;font-size:15px;line-height:22px;color:${muted};text-decoration:line-through;`) #{oldAddr || '—'}
+            //- New address
+            tr
+              td(style="padding:8px 32px 8px;")
+                table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`background:#f0fdf4;border:2px solid ${green};border-radius:8px;`)
+                  tr
+                    td(style="padding:16px 18px;")
+                      p(style=`margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${green};`) New address
+                      p(style=`margin:0;font-size:15px;line-height:22px;font-weight:600;color:${ink};`) #{newAddr}
+                      if newAddress && newAddress.note
+                        p(style=`margin:6px 0 0;font-size:13px;color:${muted};`) Note: #{newAddress.note}
+            //- Receiver
+            tr
+              td(style="padding:8px 32px 8px;")
+                table(role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style=`border:1px solid ${line};border-radius:8px;`)
+                  tr
+                    td(style="padding:16px 18px;")
+                      p(style=label) Receiver
+                      p(style=text)
+                        strong #{order && order.receiverName}
+                      p(style=text) #{order && order.receiverPhone}
+            //- Security note
+            tr
+              td(style="padding:16px 32px 32px;")
+                p(style=`margin:0;font-size:13px;line-height:20px;color:${muted};`)
+                  | Didn't make this change? Please contact
+                  |
+                  strong(style=`color:${red};`) #{shop}
+                  |
+                  | support right away so we can secure your order.

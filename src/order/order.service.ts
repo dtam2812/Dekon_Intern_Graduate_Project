@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Logger } from 'nestjs-pino';
-import { CreateOrderDto } from 'src/dto/create-order.dto';
+import { CreateOrderDto, ShippingAddressDto } from 'src/dto/create-order.dto';
 import { FilterOrderDto } from 'src/dto/filter-order.dto';
 import { UpdateOrderStatusDto } from 'src/dto/update-order-status.dto';
 import { OrderStatus } from 'src/enum/orderStatus.enum';
@@ -572,6 +572,68 @@ export class OrderService {
     }
 
     updated.$session(null);
+    return updated.toJSON();
+  }
+
+  async updateShippingAddress(
+    id: string,
+    dto: ShippingAddressDto,
+    userId: string,
+  ) {
+    const order = await this.orderModel.findOne({ _id: id, userId });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.CONFIRMED
+    ) {
+      throw new ConflictException(
+        'Order is being shipped, shipping address cannot be changed',
+      );
+    }
+
+    const oldAddress = order.toJSON().shippingAddress;
+
+    const updated = await this.orderModel.findOneAndUpdate(
+      {
+        _id: id,
+        userId,
+        status: { $in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] },
+      },
+      { shippingAddress: dto },
+      { new: true },
+    );
+
+    if (!updated) {
+      throw new ConflictException(
+        'Order is being shipped, shipping address cannot be changed',
+      );
+    }
+
+    const customer = await this.userModel
+      .findById(updated.userId)
+      .select('email fullName');
+
+    const orderCode = id.toString().slice(-8).toUpperCase();
+
+    if (customer?.email) {
+      await this.sendEmail({
+        to: customer.email,
+        subject: `Shipping address updated for order #${orderCode}`,
+        template: 'shipping-address-updated',
+        context: {
+          order: updated,
+          oldAddress,
+          newAddress: updated.toJSON().shippingAddress,
+          name: customer.fullName,
+          shopName: process.env.SHOP_NAME,
+        },
+      });
+    }
+
     return updated.toJSON();
   }
 }
