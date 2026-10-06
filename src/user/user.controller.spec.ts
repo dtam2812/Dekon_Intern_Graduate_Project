@@ -204,7 +204,6 @@ describe('UserController', () => {
     const dto = {
       fullName: 'abcdef',
       email: 'tam@gmail.com',
-      password: '123456',
       role: 'customer',
     };
     const id = '507f1f77bcf86cd799439011';

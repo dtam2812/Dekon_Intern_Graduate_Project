@@ -106,10 +106,6 @@ export class UserService {
   ): Promise<UserResponseDto | null> {
     const updatedData: Partial<UpdateUserAdminDto> = { ...dto };
 
-    if (dto.password) {
-      updatedData.password = await hashPassword(dto.password);
-    }
-
     const user = await this.userModel.findByIdAndUpdate(id, updatedData, {
       new: true,
     });

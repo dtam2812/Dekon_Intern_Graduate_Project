@@ -239,7 +239,7 @@ describe('UserService', () => {
   });
 
   describe('Update admin', () => {
-    it("should update current user's information, without password", async () => {
+    it("should update current user's information", async () => {
       const dto = {
         fullName: 'tam dinh',
         role: UserRole.STAFF,
@@ -257,31 +257,10 @@ describe('UserService', () => {
       expect(result).toEqual(userResponse);
     });
 
-    it("should update current user's information, with password", async () => {
-      const dto = {
-        fullName: 'tam dinh',
-        role: UserRole.STAFF,
-        password: 'password123',
-      };
-      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
-      mockHashPassword.mockResolvedValue('hashed-password');
-
-      const result = await service.updateAdmin(userId, dto);
-
-      expect(mockHashPassword).toHaveBeenCalledWith(dto.password);
-      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        userId,
-        { ...dto, password: 'hashed-password' },
-        { new: true },
-      );
-      expect(result).toEqual(userResponse);
-    });
-
     it('should return NotFoundException if user not found', async () => {
       const dto = {
         fullName: 'tam dinh',
         role: UserRole.STAFF,
-        password: 'password123',
       };
       mockUserModel.findByIdAndUpdate.mockResolvedValue(null);
 
