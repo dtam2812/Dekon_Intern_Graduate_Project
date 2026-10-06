@@ -1043,7 +1043,7 @@ describe('OrderService', () => {
     });
 
     it('should throw NotFoundException if order not found', async () => {
-      mockOrderModel.findById.mockResolvedValue(null);
+      mockOrderModel.findOne.mockResolvedValue(null);
 
       await expect(
         service.updateShippingAddress(orderId, dto, userId),

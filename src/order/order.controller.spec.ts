@@ -616,15 +616,15 @@ describe('OrderController', () => {
         .expect(409);
     });
 
-    it('should return 403 if the order belongs to another user', async () => {
+    it('should return 404 if the order belongs to another user', async () => {
       mockOrderService.updateShippingAddress.mockRejectedValue(
-        new ForbiddenException('You do not have access to this order'),
+        new NotFoundException('You do not have access to this order'),
       );
 
       await request(app.getHttpServer())
         .patch(`/order/shippingAddress/${id}`)
         .send(dto)
-        .expect(403);
+        .expect(404);
     });
   });
 });
