@@ -41,7 +41,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
 
         transport:
-          process.env.NODE_ENV !== 'production'
+          process.env.LOG_PRETTY === 'true'
             ? {
                 target: 'pino-pretty',
                 options: {

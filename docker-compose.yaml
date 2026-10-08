@@ -1,0 +1,22 @@
+services:
+  api:
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dekon-ecommerce-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - LOG_PRETTY=false
+      - PORT=3000
+    ports:
+      - '3000:3000'
+    volumes:
+      - uploads:/app/uploads
+volumes:
+  uploads:
