@@ -7,15 +7,18 @@ import {
 } from '@nestjs/swagger';
 import { PaginatedResponseDto } from 'src/dto/paginated-response.dto';
 
-const envelope = <T extends Type<unknown>>(model: T, isArray: boolean) => ({
+const envelopeOf = (inner: Record<string, unknown>) => ({
   type: 'object',
   required: ['data'],
-  properties: {
-    data: isArray
+  properties: { data: inner },
+});
+
+const envelope = <T extends Type<unknown>>(model: T, isArray: boolean) =>
+  envelopeOf(
+    isArray
       ? { type: 'array', items: { $ref: getSchemaPath(model) } }
       : { $ref: getSchemaPath(model) },
-  },
-});
+  );
 
 export const ApiOkData = <T extends Type<unknown>>(
   model: T,
@@ -45,25 +48,31 @@ export const ApiPaginatedData = <T extends Type<unknown>>(
     ApiExtraModels(PaginatedResponseDto, model),
     ApiOkResponse({
       description,
-      schema: {
-        type: 'object',
-        required: ['items'],
-        properties: {
-          items: {
-            allOf: [
-              { $ref: getSchemaPath(PaginatedResponseDto) },
-              {
-                type: 'object',
-                properties: {
-                  items: {
-                    type: 'array',
-                    items: { $ref: getSchemaPath(model) },
-                  },
-                },
+      schema: envelopeOf({
+        allOf: [
+          { $ref: getSchemaPath(PaginatedResponseDto) },
+          {
+            type: 'object',
+            required: ['items'],
+            properties: {
+              items: {
+                type: 'array',
+                items: { $ref: getSchemaPath(model) },
               },
-            ],
+            },
           },
-        },
-      },
+        ],
+      }),
+    }),
+  );
+
+export const ApiOkOneOfData = (models: Type<unknown>[], description?: string) =>
+  applyDecorators(
+    ApiExtraModels(...models),
+    ApiOkResponse({
+      description,
+      schema: envelopeOf({
+        oneOf: models.map((m) => ({ $ref: getSchemaPath(m) })),
+      }),
     }),
   );

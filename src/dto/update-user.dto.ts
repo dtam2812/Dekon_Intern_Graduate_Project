@@ -53,5 +53,6 @@ export class UpdateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'Password must be filled' })
   @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MaxLength(50, { message: 'Password must be at most 50 characters' })
   newPassword?: string;
 }

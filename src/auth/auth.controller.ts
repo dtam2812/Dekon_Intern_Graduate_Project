@@ -27,8 +27,11 @@ import { TokenResponseDto } from 'src/dto/token-response.dto';
 import {
   ApiCreatedData,
   ApiOkData,
+  ApiOkOneOfData,
 } from 'src/decorator/api-data-response.decorator';
 import { MessageResponseDto } from 'src/dto/message-response.dto';
+import { ProfileResponseDto } from 'src/dto/profile-response.dto';
+import { LinkConfirmationResponseDto } from 'src/dto/confirm-link-google-response.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -110,7 +113,7 @@ export class AuthController {
     description:
       'Retrieves the profile information of the currently authenticated user.',
   })
-  @ApiOkData(MessageResponseDto, 'Successfully retrieved profile')
+  @ApiOkData(ProfileResponseDto, 'Successfully retrieved profile')
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   getProfile(@Req() req: any) {
     return req.user;
@@ -136,8 +139,11 @@ export class AuthController {
     description:
       'Handles the callback from Google OAuth2. Creates a new user or issues a pending link token if the email already exists locally.',
   })
-  @ApiOkData(MessageResponseDto, 'Successfully authenticated with Google')
-  @ApiUnauthorizedResponse({ description: 'User not found' })
+  @ApiOkOneOfData(
+    [TokenResponseDto, LinkConfirmationResponseDto],
+    'Logged in with Google, or account linking confirmation is required',
+  )
+  @ApiUnauthorizedResponse({ description: 'Google authentication failed' })
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any) {
     return this.authService.googleLogin(req.user);
@@ -151,7 +157,7 @@ export class AuthController {
     description:
       'Confirms linking a Google account to an existing local account using a pending link token and the local account password.',
   })
-  @ApiCreatedData(MessageResponseDto, 'Successfully linked Google account')
+  @ApiCreatedData(TokenResponseDto, 'Successfully linked Google account')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({
     description:
