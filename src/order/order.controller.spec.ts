@@ -231,7 +231,7 @@ describe('OrderController', () => {
   });
 
   describe('POST /order/confirm', () => {
-    const data = {
+    const dto = {
       token:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30',
     };
@@ -241,11 +241,11 @@ describe('OrderController', () => {
 
       const res = await request(app.getHttpServer())
         .post('/order/confirm')
-        .send(data)
+        .send(dto)
         .expect(201);
 
       expect(res.body).toEqual({ data: result });
-      expect(mockOrderService.confirmOrder).toHaveBeenCalledWith(data.token);
+      expect(mockOrderService.confirmOrder).toHaveBeenCalledWith(dto);
     });
 
     it('should return 400 if token invalid or expired ', async () => {
@@ -255,7 +255,7 @@ describe('OrderController', () => {
 
       await request(app.getHttpServer())
         .post('/order/confirm')
-        .send(data)
+        .send(dto)
         .expect(400);
     });
 
@@ -266,13 +266,13 @@ describe('OrderController', () => {
 
       await request(app.getHttpServer())
         .post('/order/confirm')
-        .send(data)
+        .send(dto)
         .expect(404);
     });
   });
 
   describe('POST /order/cancel', () => {
-    const data = {
+    const dto = {
       token:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30',
     };
@@ -282,11 +282,11 @@ describe('OrderController', () => {
 
       const res = await request(app.getHttpServer())
         .post('/order/cancel')
-        .send(data)
+        .send(dto)
         .expect(201);
 
       expect(res.body).toEqual({ data: result });
-      expect(mockOrderService.cancelOrder).toHaveBeenCalledWith(data.token);
+      expect(mockOrderService.cancelOrder).toHaveBeenCalledWith(dto);
     });
 
     it('should return 400 if token invalid or expired ', async () => {
@@ -296,7 +296,7 @@ describe('OrderController', () => {
 
       await request(app.getHttpServer())
         .post('/order/cancel')
-        .send(data)
+        .send(dto)
         .expect(400);
     });
 
@@ -307,7 +307,7 @@ describe('OrderController', () => {
 
       await request(app.getHttpServer())
         .post('/order/cancel')
-        .send(data)
+        .send(dto)
         .expect(404);
     });
   });

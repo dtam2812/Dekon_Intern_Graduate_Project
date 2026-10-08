@@ -25,6 +25,7 @@ import { RegisterDto } from 'src/dto/register.dto';
 import { UserRole } from 'src/enum/userRole.enum';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { ConfirmLinkGoogleDto } from 'src/dto/confirm-link-google.dto';
 
 @Injectable()
 export class AuthService {
@@ -346,11 +347,11 @@ export class AuthService {
     return { requireLinkConfirmation: true, pendingLinkToken };
   }
 
-  async confirmLinkGoogleAccount(pendingLinkToken: string, password: string) {
+  async confirmLinkGoogleAccount(dto: ConfirmLinkGoogleDto) {
     let payload: { sub: string; purpose: string; googleFullName: string };
 
     try {
-      payload = this.jwtService.verify(pendingLinkToken);
+      payload = this.jwtService.verify(dto.pendingLinkToken);
     } catch (error) {
       this.logger.warn('Google link failed: link token invalid or expired');
       throw new UnauthorizedException('Link token invalid or expired');
@@ -374,7 +375,7 @@ export class AuthService {
       throw new UnauthorizedException('Password is required');
     }
 
-    const isPasswordValid = await comparePassword(password, user.password);
+    const isPasswordValid = await comparePassword(dto.password, user.password);
     if (!isPasswordValid) {
       this.logger.warn(
         `Google link failed: wrong password for user ${user.id}`,

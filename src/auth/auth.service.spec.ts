@@ -425,8 +425,7 @@ describe('AuthService', () => {
   });
 
   describe('confirmLinkGoogleAccount', () => {
-    const pendingLinkToken = 'pending-link-token';
-    const password = 'Password123!';
+    const dto = { pendingLinkToken: 'pending-token-abc', password: '123456' };
     const validPayload = {
       sub: userId,
       purpose: 'google-link',
@@ -438,12 +437,9 @@ describe('AuthService', () => {
       mockUserModel.findById.mockReturnValue(mockSelect(mockUser));
       mockComparePassword.mockResolvedValue(true);
 
-      const result = await service.confirmLinkGoogleAccount(
-        pendingLinkToken,
-        password,
-      );
+      const result = await service.confirmLinkGoogleAccount(dto);
 
-      expect(mockJwtService.verify).toHaveBeenCalledWith(pendingLinkToken);
+      expect(mockJwtService.verify).toHaveBeenCalledWith(dto.pendingLinkToken);
       expect(mockUserModel.findById).toHaveBeenCalledWith(userId);
       expect(mockUser.provider).toBe(AuthProvider.GOOGLE);
       expect(mockUser.save).toHaveBeenCalled();
@@ -455,9 +451,9 @@ describe('AuthService', () => {
         throw new Error('jwt expired');
       });
 
-      await expect(
-        service.confirmLinkGoogleAccount(pendingLinkToken, password),
-      ).rejects.toThrow('Link token invalid or expired');
+      await expect(service.confirmLinkGoogleAccount(dto)).rejects.toThrow(
+        'Link token invalid or expired',
+      );
       expect(mockUserModel.findById).not.toHaveBeenCalled();
     });
 
@@ -467,9 +463,9 @@ describe('AuthService', () => {
         purpose: 'access',
       });
 
-      await expect(
-        service.confirmLinkGoogleAccount(pendingLinkToken, password),
-      ).rejects.toThrow('Invalid token purpose');
+      await expect(service.confirmLinkGoogleAccount(dto)).rejects.toThrow(
+        'Invalid token purpose',
+      );
       expect(mockUserModel.findById).not.toHaveBeenCalled();
     });
 
@@ -477,18 +473,18 @@ describe('AuthService', () => {
       mockJwtService.verify.mockReturnValue(validPayload);
       mockUserModel.findById.mockReturnValue(mockSelect(null));
 
-      await expect(
-        service.confirmLinkGoogleAccount(pendingLinkToken, password),
-      ).rejects.toThrow('User not found');
+      await expect(service.confirmLinkGoogleAccount(dto)).rejects.toThrow(
+        'User not found',
+      );
     });
 
     it('should throw UnauthorizedException if user has no password', async () => {
       mockJwtService.verify.mockReturnValue(validPayload);
       mockUserModel.findById.mockReturnValue(mockSelect(mockOAuthUser));
 
-      await expect(
-        service.confirmLinkGoogleAccount(pendingLinkToken, password),
-      ).rejects.toThrow('Password is required');
+      await expect(service.confirmLinkGoogleAccount(dto)).rejects.toThrow(
+        'Password is required',
+      );
       expect(mockComparePassword).not.toHaveBeenCalled();
     });
 
@@ -497,9 +493,9 @@ describe('AuthService', () => {
       mockUserModel.findById.mockReturnValue(mockSelect(mockUser));
       mockComparePassword.mockResolvedValue(false);
 
-      await expect(
-        service.confirmLinkGoogleAccount(pendingLinkToken, password),
-      ).rejects.toThrow('Invalid password');
+      await expect(service.confirmLinkGoogleAccount(dto)).rejects.toThrow(
+        'Invalid password',
+      );
       expect(mockUser.provider).toBe(AuthProvider.LOCAL);
       expect(mockUser.save).not.toHaveBeenCalled();
     });
