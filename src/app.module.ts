@@ -18,6 +18,9 @@ import { LoggerModule } from 'nestjs-pino';
 import { join } from 'path';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
+const usePrettyLogs =
+  process.env.NODE_ENV !== 'production' && process.env.LOG_PRETTY === 'true';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -40,18 +43,17 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       pinoHttp: {
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
 
-        transport:
-          process.env.NODE_ENV !== 'production'
-            ? {
-                target: 'pino-pretty',
-                options: {
-                  colorize: true,
-                  singleLine: true,
-                  translateTime: 'SYS:HH:MM:ss',
-                  ignore: 'pid,hostname,res',
-                },
-              }
-            : undefined,
+        transport: usePrettyLogs
+          ? {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                singleLine: true,
+                translateTime: 'SYS:HH:MM:ss',
+                ignore: 'pid,hostname,res',
+              },
+            }
+          : undefined,
 
         serializers: {
           req: (req) => ({ id: req.id, method: req.method, url: req.url }),
