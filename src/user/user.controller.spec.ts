@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import {
+  BadRequestException,
+  ConflictException,
   ExecutionContext,
+  ForbiddenException,
   INestApplication,
   NotFoundException,
   ValidationPipe,
@@ -12,6 +15,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/guard/role.guard';
 import request from 'supertest';
 import { TransformInterceptor } from 'src/interceptor/transform.interceptor';
+import { AuthProvider } from 'src/enum/authProvider.enum';
 
 interface RequestWithUser {
   user?: { sub?: string; email?: string; fullName?: string };
@@ -83,7 +87,6 @@ describe('UserController', () => {
         email: 'tam@gmail.com',
         password: '123456',
         role: 'admin',
-        provider: 'local',
       };
 
       const result = {
@@ -91,7 +94,7 @@ describe('UserController', () => {
         fullName: dto.fullName,
         email: dto.email,
         role: dto.role,
-        provider: dto.provider,
+        provider: AuthProvider.LOCAL,
       };
       mockUserService.create.mockResolvedValue(result);
 
@@ -179,15 +182,17 @@ describe('UserController', () => {
     const dto = {
       fullName: 'abcdef',
       email: 'tam@gmail.com',
-      password: '123456',
+      currentPassword: '123456',
+      newPassword: '654321',
     };
-    const id = '507f1f77bcf86cd799439011';
+
+    const result = {
+      _id: '507f1f77bcf86cd799439011',
+      fullName: 'abcdef',
+      email: 'tam@gmail.com',
+    };
+
     it("should return 200 and update a user's information", async () => {
-      const result = {
-        _id: id,
-        userName: 'Updated Name',
-        email: 'a@test.com',
-      };
       mockUserService.update.mockResolvedValue(result);
 
       const res = await request(app.getHttpServer())
@@ -198,23 +203,58 @@ describe('UserController', () => {
       expect(res.body).toEqual({ data: result });
       expect(mockUserService.update).toHaveBeenCalledWith('mockUserId', dto);
     });
+
+    it('should return 400 if service rejects (wrong password / Google account)', async () => {
+      mockUserService.update.mockRejectedValue(
+        new BadRequestException('Current password is incorrect'),
+      );
+
+      await request(app.getHttpServer())
+        .patch('/user/updateInfo')
+        .send(dto)
+        .expect(400);
+
+      expect(mockUserService.update).toHaveBeenCalledWith('mockUserId', dto);
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockUserService.update.mockRejectedValue(
+        new NotFoundException('User not found'),
+      );
+
+      await request(app.getHttpServer())
+        .patch('/user/updateInfo')
+        .send(dto)
+        .expect(404);
+    });
+
+    it('should return 409 if email already in use', async () => {
+      mockUserService.update.mockRejectedValue(
+        new ConflictException('Email already in use'),
+      );
+
+      await request(app.getHttpServer())
+        .patch('/user/updateInfo')
+        .send(dto)
+        .expect(409);
+    });
+
+    it('should return 400 if email is invalid', async () => {
+      await request(app.getHttpServer())
+        .patch('/user/updateInfo')
+        .send({ ...dto, email: 'not-an-email' })
+        .expect(400);
+
+      expect(mockUserService.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('PATCH /user/:id', () => {
-    const dto = {
-      fullName: 'abcdef',
-      email: 'tam@gmail.com',
-      password: '123456',
-      role: 'customer',
-    };
+    const dto = { role: 'staff' };
     const id = '507f1f77bcf86cd799439011';
 
-    it("should return 200 and update a user info (admin's action)", async () => {
-      const result = {
-        fullName: 'abcdef',
-        email: 'tam@gmail.com',
-        role: 'customer',
-      };
+    it("should return 200 and update a user's role (admin's action)", async () => {
+      const result = { _id: id, fullName: 'abcdef', role: 'staff' };
       mockUserService.updateAdmin.mockResolvedValue(result);
 
       const res = await request(app.getHttpServer())
@@ -223,12 +263,16 @@ describe('UserController', () => {
         .expect(200);
 
       expect(res.body).toEqual({ data: result });
-      expect(mockUserService.updateAdmin).toHaveBeenCalledWith(id, dto);
+      expect(mockUserService.updateAdmin).toHaveBeenCalledWith(
+        id,
+        dto,
+        'mockUserId',
+      );
     });
 
     it('should return 404 if user to update not found', async () => {
       mockUserService.updateAdmin.mockRejectedValue(
-        new NotFoundException(`User with id ${id} not found`),
+        new NotFoundException('User not found'),
       );
 
       await request(app.getHttpServer())
@@ -236,15 +280,49 @@ describe('UserController', () => {
         .send(dto)
         .expect(404);
 
-      expect(mockUserService.updateAdmin).toHaveBeenCalledWith(id, dto);
+      expect(mockUserService.updateAdmin).toHaveBeenCalledWith(
+        id,
+        dto,
+        'mockUserId',
+      );
     });
 
-    it('should return 403 if RolesGuard rejects(not Admin or Staff)', async () => {
-      mockRolesGuard.canActivate.mockReturnValueOnce(false);
+    it('should return 403 if admin tries to change their own role', async () => {
+      mockUserService.updateAdmin.mockRejectedValue(
+        new ForbiddenException('Admins cannot change their own role'),
+      );
+
       await request(app.getHttpServer())
         .patch(`/user/${id}`)
         .send(dto)
         .expect(403);
+    });
+
+    it('should return 403 if RolesGuard rejects (not Admin)', async () => {
+      mockRolesGuard.canActivate.mockReturnValueOnce(false);
+
+      await request(app.getHttpServer())
+        .patch(`/user/${id}`)
+        .send(dto)
+        .expect(403);
+
+      expect(mockUserService.updateAdmin).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if id is not a valid ObjectId', async () => {
+      await request(app.getHttpServer())
+        .patch('/user/invalid-id')
+        .send(dto)
+        .expect(400);
+
+      expect(mockUserService.updateAdmin).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 if role is invalid', async () => {
+      await request(app.getHttpServer())
+        .patch(`/user/${id}`)
+        .send({ role: 'superman' })
+        .expect(400);
 
       expect(mockUserService.updateAdmin).not.toHaveBeenCalled();
     });

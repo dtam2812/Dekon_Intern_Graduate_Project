@@ -331,8 +331,7 @@ describe('AuthController', () => {
 
       expect(res.body).toEqual(result);
       expect(mockAuthService.confirmLinkGoogleAccount).toHaveBeenCalledWith(
-        dto.pendingLinkToken,
-        dto.password,
+        dto,
       );
     });
 

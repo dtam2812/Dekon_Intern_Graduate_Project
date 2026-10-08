@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,7 +14,7 @@ import { UpdateUserDto } from 'src/dto/update-user.dto';
 import { UserResponseDto } from 'src/dto/user-response.dto';
 import { AuthProvider } from 'src/enum/authProvider.enum';
 import { User, UserDocument } from 'src/schemas/user.schema';
-import { hashPassword } from 'src/service/PasswordHashing';
+import { comparePassword, hashPassword } from 'src/service/PasswordHashing';
 
 @Injectable()
 export class UserService {
@@ -40,7 +41,7 @@ export class UserService {
 
       const user = await this.userModel.create({
         fullName: dto.fullName,
-        email: dto.email,
+        email: dto.email.trim().toLowerCase(),
         password: hashedPassword,
         role: dto.role,
         provider: AuthProvider.LOCAL,
@@ -76,51 +77,104 @@ export class UserService {
     return user.toJSON() as UserResponseDto;
   }
 
-  async update(
-    id: string,
-    dto: UpdateUserDto,
-  ): Promise<UserResponseDto | null> {
-    const updatedData: Partial<UpdateUserDto> = { ...dto };
-
-    if (dto.password) {
-      updatedData.password = await hashPassword(dto.password);
-    }
-
-    const user = await this.userModel.findByIdAndUpdate(id, updatedData, {
-      new: true,
-    });
+  async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
+    const user = await this.userModel.findById(id).select('+password');
 
     if (!user) {
       this.logger.warn(`Update failed: user ${id} not found`);
-      throw new NotFoundException('user not found');
+      throw new NotFoundException('User not found');
     }
 
-    this.logger.log(`User ${id} updated their own information`);
+    const { currentPassword, newPassword, email, ...rest } = dto;
+    const updatedData: Record<string, unknown> = { ...rest };
 
-    return user.toJSON() as UserResponseDto;
+    const isGoogleLinked = user.provider === AuthProvider.GOOGLE;
+
+    if (
+      isGoogleLinked &&
+      (email !== undefined ||
+        currentPassword !== undefined ||
+        newPassword !== undefined)
+    ) {
+      throw new BadRequestException(
+        'This account uses Google sign-in, so email and password cannot be changed',
+      );
+    }
+
+    const normalizedEmail = email?.trim().toLowerCase();
+    const isChangingEmail =
+      normalizedEmail !== undefined && normalizedEmail !== user.email;
+
+    const verifyCurrentPassword = async (): Promise<void> => {
+      if (!currentPassword) {
+        throw new BadRequestException('Current password is required');
+      }
+      if (!user.password) {
+        throw new BadRequestException('This account has no password set');
+      }
+      const isMatch = await comparePassword(currentPassword, user.password);
+      if (!isMatch) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+    };
+
+    if (isChangingEmail) {
+      await verifyCurrentPassword();
+      updatedData.email = normalizedEmail;
+    }
+
+    if (newPassword) {
+      await verifyCurrentPassword();
+      updatedData.password = await hashPassword(newPassword);
+    }
+
+    if (Object.keys(updatedData).length === 0) {
+      return user.toJSON() as UserResponseDto;
+    }
+
+    try {
+      const updated = await this.userModel.findByIdAndUpdate(id, updatedData, {
+        new: true,
+      });
+
+      if (!updated) {
+        throw new NotFoundException('User not found');
+      }
+
+      this.logger.log(`User ${id} updated their own information`);
+      return updated.toJSON() as UserResponseDto;
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        throw new ConflictException('Email already in use');
+      }
+      throw error;
+    }
   }
 
   async updateAdmin(
     id: string,
     dto: UpdateUserAdminDto,
-  ): Promise<UserResponseDto | null> {
-    const updatedData: Partial<UpdateUserAdminDto> = { ...dto };
-
-    if (dto.password) {
-      updatedData.password = await hashPassword(dto.password);
+    currentUserId: string,
+  ): Promise<UserResponseDto> {
+    if (id === currentUserId) {
+      this.logger.warn(`Admin ${currentUserId} tried to change their own role`);
+      throw new ForbiddenException('Admins cannot change their own role');
     }
 
-    const user = await this.userModel.findByIdAndUpdate(id, updatedData, {
-      new: true,
-    });
+    const user = await this.userModel.findByIdAndUpdate(
+      id,
+      { role: dto.role },
+      { new: true },
+    );
 
     if (!user) {
       this.logger.warn(`Admin update failed: user ${id} not found`);
-      throw new NotFoundException('user not found');
+      throw new NotFoundException('User not found');
     }
 
-    this.logger.log(`User ${id} updated by admin`);
-
+    this.logger.log(
+      `User ${id} role updated to ${dto.role} by admin ${currentUserId}`,
+    );
     return user.toJSON() as UserResponseDto;
   }
 

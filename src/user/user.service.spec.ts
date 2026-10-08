@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
-import { hashPassword } from 'src/service/PasswordHashing';
+import { comparePassword, hashPassword } from 'src/service/PasswordHashing';
 import { UserRole } from 'src/enum/userRole.enum';
 import { AuthProvider } from 'src/enum/authProvider.enum';
 import { UserService } from './user.service';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { User } from 'src/schemas/user.schema';
@@ -20,6 +21,7 @@ describe('UserService', () => {
   let service: UserService;
 
   const mockHashPassword = hashPassword as jest.Mock;
+  const mockComparePassword = comparePassword as jest.Mock;
 
   const mockUserModel = {
     findOne: jest.fn(),
@@ -189,18 +191,40 @@ describe('UserService', () => {
   });
 
   describe('Update a user', () => {
+    const localUser = {
+      ...mockUser,
+      provider: AuthProvider.LOCAL,
+      email: 'old@test.com',
+      password: 'hashed-old',
+      toJSON: () => userResponse,
+    };
+
+    const googleUser = {
+      ...mockUser,
+      provider: AuthProvider.GOOGLE,
+      email: 'google@test.com',
+      password: undefined,
+      toJSON: () => userResponse,
+    };
+
+    const mockFindById = (user: unknown) => {
+      mockUserModel.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(user),
+      });
+    };
+
     it("should update current user's information, without password", async () => {
-      const dto = {
-        fullName: 'tam dinh',
-      };
+      const dto = { fullName: 'tam dinh' };
+      mockFindById(localUser);
       mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
 
       const result = await service.update(userId, dto);
 
+      expect(mockComparePassword).not.toHaveBeenCalled();
       expect(mockHashPassword).not.toHaveBeenCalled();
       expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
         userId,
-        dto,
+        { fullName: 'tam dinh' },
         { new: true },
       );
       expect(result).toEqual(userResponse);
@@ -209,85 +233,173 @@ describe('UserService', () => {
     it("should update current user's information, with password", async () => {
       const dto = {
         fullName: 'tam dinh',
-        password: 'password123',
+        currentPassword: 'old-password',
+        newPassword: 'password123',
       };
-      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
+      mockFindById(localUser);
+      mockComparePassword.mockResolvedValue(true);
       mockHashPassword.mockResolvedValue('hashed-password');
+      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
 
       const result = await service.update(userId, dto);
 
-      expect(mockHashPassword).toHaveBeenCalledWith(dto.password);
+      expect(mockComparePassword).toHaveBeenCalledWith(
+        'old-password',
+        'hashed-old',
+      );
+      expect(mockHashPassword).toHaveBeenCalledWith('password123');
       expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
         userId,
-        { ...dto, password: 'hashed-password' },
+        { fullName: 'tam dinh', password: 'hashed-password' },
         { new: true },
       );
       expect(result).toEqual(userResponse);
     });
 
-    it('should return NotFoundException if user not found', async () => {
-      const dto = {
-        fullName: 'tam dinh',
-        password: 'password123',
-      };
+    it('should update email (lowercased) when current password is correct', async () => {
+      const dto = { email: '  New@Test.com ', currentPassword: 'old-password' };
+      mockFindById(localUser);
+      mockComparePassword.mockResolvedValue(true);
+      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
+
+      await service.update(userId, dto);
+
+      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        userId,
+        { email: 'new@test.com' },
+        { new: true },
+      );
+    });
+
+    it('should return current user without updating if nothing changed', async () => {
+      mockFindById(localUser);
+
+      const result = await service.update(userId, {});
+
+      expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(result).toEqual(userResponse);
+    });
+
+    it('should throw BadRequestException if newPassword is sent without currentPassword', async () => {
+      mockFindById(localUser);
+
+      await expect(
+        service.update(userId, { newPassword: 'password123' }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if currentPassword is incorrect', async () => {
+      mockFindById(localUser);
+      mockComparePassword.mockResolvedValue(false);
+
+      await expect(
+        service.update(userId, {
+          currentPassword: 'wrong',
+          newPassword: 'password123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockHashPassword).not.toHaveBeenCalled();
+      expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['email', { email: 'new@test.com' }],
+      ['currentPassword', { currentPassword: 'old-password' }],
+      ['newPassword', { newPassword: 'password123' }],
+    ])(
+      'should throw BadRequestException if Google account sends %s',
+      async (_field, dto) => {
+        mockFindById(googleUser);
+
+        await expect(service.update(userId, dto)).rejects.toThrow(
+          BadRequestException,
+        );
+
+        expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should still allow Google account to update fullName', async () => {
+      mockFindById(googleUser);
+      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
+
+      const result = await service.update(userId, { fullName: 'tam dinh' });
+
+      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        userId,
+        { fullName: 'tam dinh' },
+        { new: true },
+      );
+      expect(result).toEqual(userResponse);
+    });
+
+    it('should throw NotFoundException if user not found', async () => {
+      mockFindById(null);
+
+      await expect(
+        service.update(userId, { fullName: 'tam dinh' }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if user disappears before update', async () => {
+      mockFindById(localUser);
       mockUserModel.findByIdAndUpdate.mockResolvedValue(null);
 
-      await expect(service.update(userId, dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update(userId, { fullName: 'tam dinh' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ConflictException if email already in use (Mongo 11000)', async () => {
+      mockFindById(localUser);
+      mockComparePassword.mockResolvedValue(true);
+      mockUserModel.findByIdAndUpdate.mockRejectedValue({ code: 11000 });
+
+      await expect(
+        service.update(userId, {
+          email: 'taken@test.com',
+          currentPassword: 'old-password',
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
   describe('Update admin', () => {
-    it("should update current user's information, without password", async () => {
-      const dto = {
-        fullName: 'tam dinh',
-        role: UserRole.STAFF,
-      };
+    const adminId = 'admin-id-123';
+
+    it("should update another user's role", async () => {
+      const dto = { role: UserRole.STAFF };
       mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
 
-      const result = await service.updateAdmin(userId, dto);
+      const result = await service.updateAdmin(userId, dto, adminId);
 
-      expect(mockHashPassword).not.toHaveBeenCalled();
       expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
         userId,
-        dto,
+        { role: UserRole.STAFF },
         { new: true },
       );
       expect(result).toEqual(userResponse);
     });
 
-    it("should update current user's information, with password", async () => {
-      const dto = {
-        fullName: 'tam dinh',
-        role: UserRole.STAFF,
-        password: 'password123',
-      };
-      mockUserModel.findByIdAndUpdate.mockResolvedValue(mockUser);
-      mockHashPassword.mockResolvedValue('hashed-password');
+    it('should throw ForbiddenException if admin changes their own role', async () => {
+      await expect(
+        service.updateAdmin(adminId, { role: UserRole.STAFF }, adminId),
+      ).rejects.toThrow(ForbiddenException);
 
-      const result = await service.updateAdmin(userId, dto);
-
-      expect(mockHashPassword).toHaveBeenCalledWith(dto.password);
-      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        userId,
-        { ...dto, password: 'hashed-password' },
-        { new: true },
-      );
-      expect(result).toEqual(userResponse);
+      expect(mockUserModel.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
-    it('should return NotFoundException if user not found', async () => {
-      const dto = {
-        fullName: 'tam dinh',
-        role: UserRole.STAFF,
-        password: 'password123',
-      };
+    it('should throw NotFoundException if user not found', async () => {
       mockUserModel.findByIdAndUpdate.mockResolvedValue(null);
 
-      await expect(service.updateAdmin(userId, dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateAdmin(userId, { role: UserRole.STAFF }, adminId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -609,7 +609,7 @@ describe('OrderService', () => {
       expect(limit).toHaveBeenCalledWith(10);
       expect(mockOrderModel.countDocuments).toHaveBeenCalled();
       expect(result).toEqual({
-        data: [orderResponse, orderResponse],
+        items: [orderResponse, orderResponse],
         meta: { total: 2, page: 1, limit: 10, totalPages: 1 },
       });
     });
@@ -634,7 +634,7 @@ describe('OrderService', () => {
       expect(limit).toHaveBeenCalledWith(3);
       expect(mockOrderModel.countDocuments).toHaveBeenCalledWith(filter);
       expect(result).toEqual({
-        data: [orderResponse, orderResponse],
+        items: [orderResponse, orderResponse],
         meta: { total: 10, page: 3, limit: 3, totalPages: 4 },
       });
     });
@@ -657,7 +657,7 @@ describe('OrderService', () => {
       const result = await service.findAll({});
 
       expect(result).toEqual({
-        data: [],
+        items: [],
         meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
       });
     });

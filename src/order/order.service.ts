@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Logger } from 'nestjs-pino';
+import { ConfirmOrderTokenDto } from 'src/dto/confirm-order-token.dto';
 import { CreateOrderDto, ShippingAddressDto } from 'src/dto/create-order.dto';
 import { FilterOrderDto } from 'src/dto/filter-order.dto';
 import { UpdateOrderStatusDto } from 'src/dto/update-order-status.dto';
@@ -214,8 +215,8 @@ export class OrderService {
     return order.toJSON();
   }
 
-  async confirmOrder(token: string): Promise<Order> {
-    const { orderId, userId } = await this.verifyOrderToken(token);
+  async confirmOrder(dto: ConfirmOrderTokenDto): Promise<Order> {
+    const { orderId, userId } = await this.verifyOrderToken(dto.token);
 
     const order = await this.orderModel.findOneAndUpdate(
       { _id: orderId, userId, status: OrderStatus.PENDING },
@@ -273,8 +274,8 @@ export class OrderService {
     return order.toJSON();
   }
 
-  async cancelOrder(token: string): Promise<Order> {
-    const { orderId, userId } = await this.verifyOrderToken(token);
+  async cancelOrder(dto: ConfirmOrderTokenDto): Promise<Order> {
+    const { orderId, userId } = await this.verifyOrderToken(dto.token);
     const session = await this.orderModel.db.startSession();
     let order: OrderDocument | null = null;
 
@@ -357,15 +358,15 @@ export class OrderService {
       filter.userId = query.userId;
     }
 
-    const [data, total] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.orderModel.find(filter).skip(skip).limit(itemsPerPage),
       this.orderModel.countDocuments(filter),
     ]);
 
-    const result = data.map((element) => element.toJSON());
+    const result = items.map((element) => element.toJSON());
 
     return {
-      data: result,
+      items: result,
       meta: {
         total,
         page,

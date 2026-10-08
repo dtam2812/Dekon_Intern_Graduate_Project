@@ -239,7 +239,7 @@ describe('ProductService', () => {
       expect(limit).toHaveBeenCalledWith(10);
       expect(mockProductModel.countDocuments).toHaveBeenCalled();
       expect(result).toEqual({
-        data: [productResponse, productResponse],
+        items: [productResponse, productResponse],
         meta: { total: 2, page: 1, limit: 10, totalPages: 1 },
       });
     });
@@ -264,7 +264,7 @@ describe('ProductService', () => {
       expect(limit).toHaveBeenCalledWith(3);
       expect(mockProductModel.countDocuments).toHaveBeenCalledWith(filter);
       expect(result).toEqual({
-        data: [productResponse, productResponse],
+        items: [productResponse, productResponse],
         meta: { total: 10, page: 3, limit: 3, totalPages: 4 },
       });
     });
@@ -287,7 +287,7 @@ describe('ProductService', () => {
       const result = await service.findAll({});
 
       expect(result).toEqual({
-        data: [],
+        items: [],
         meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
       });
     });
