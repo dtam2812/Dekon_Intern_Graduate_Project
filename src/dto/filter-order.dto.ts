@@ -32,7 +32,7 @@ export class FilterOrderDto {
   itemsPerPage?: number = 10;
 
   @ApiPropertyOptional({
-    description: "Filter order by user's name",
+    description: 'Filter order by receiver name',
     example: 'tam',
   })
   @IsOptional()

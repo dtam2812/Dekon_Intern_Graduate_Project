@@ -358,15 +358,15 @@ export class OrderService {
       filter.userId = query.userId;
     }
 
-    const [data, total] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.orderModel.find(filter).skip(skip).limit(itemsPerPage),
       this.orderModel.countDocuments(filter),
     ]);
 
-    const result = data.map((element) => element.toJSON());
+    const result = items.map((element) => element.toJSON());
 
     return {
-      data: result,
+      items: result,
       meta: {
         total,
         page,

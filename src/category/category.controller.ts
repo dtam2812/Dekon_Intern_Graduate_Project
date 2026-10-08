@@ -18,14 +18,17 @@ import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiOkResponse,
-  ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiConflictResponse,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
+import {
+  ApiCreatedData,
+  ApiOkData,
+} from 'src/decorator/api-data-response.decorator';
+import { MessageResponseDto } from 'src/dto/message-response.dto';
 
 @Controller('category')
 export class CategoryController {
@@ -38,10 +41,7 @@ export class CategoryController {
     summary: 'Create new category, admin only',
     description: 'Creates a new category. Only accessible by administrators.',
   })
-  @ApiCreatedResponse({
-    type: Category,
-    description: 'Category successfully created',
-  })
+  @ApiCreatedData(Category, 'Category successfully created')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden resource' })
@@ -58,11 +58,7 @@ export class CategoryController {
     summary: 'Get all categories',
     description: 'Retrieves a list of all categories.',
   })
-  @ApiOkResponse({
-    type: Category,
-    isArray: true,
-    description: 'Successfully retrieved list of categories',
-  })
+  @ApiOkData(Category, 'Successfully retrieved list of categories', true)
   findAll(): Promise<Category[]> {
     return this.categoryService.findAll();
   }
@@ -73,10 +69,7 @@ export class CategoryController {
     summary: 'Get category by id',
     description: 'Finds a specific category by its ID.',
   })
-  @ApiOkResponse({
-    type: Category,
-    description: 'Successfully retrieved category details',
-  })
+  @ApiOkData(Category, 'Successfully retrieved category details')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })
@@ -93,10 +86,7 @@ export class CategoryController {
     description:
       'Updates a category by its ID. Only accessible by administrators.',
   })
-  @ApiOkResponse({
-    type: Category,
-    description: 'Successfully updated category',
-  })
+  @ApiOkData(Category, 'Successfully updated category')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId or Body)',
   })
@@ -121,7 +111,7 @@ export class CategoryController {
     description:
       'Deletes a category by its ID. Only accessible by administrators.',
   })
-  @ApiOkResponse({ description: 'Category successfully deleted' })
+  @ApiOkData(MessageResponseDto, 'Category successfully deleted')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })

@@ -19,14 +19,17 @@ import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiOkResponse,
-  ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiConflictResponse,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
+import {
+  ApiCreatedData,
+  ApiOkData,
+} from 'src/decorator/api-data-response.decorator';
+import { MessageResponseDto } from 'src/dto/message-response.dto';
 
 @Controller('user')
 export class UserController {
@@ -40,10 +43,7 @@ export class UserController {
     description:
       'Creates a new user account. Only accessible by administrators.',
   })
-  @ApiCreatedResponse({
-    type: UserResponseDto,
-    description: 'User successfully created',
-  })
+  @ApiCreatedData(UserResponseDto, 'User successfully created')
   @ApiBadRequestResponse({
     description: 'Validation failed / Password is required',
   })
@@ -62,11 +62,7 @@ export class UserController {
     description:
       'Retrieves a list of all users. Accessible by administrators and staff.',
   })
-  @ApiOkResponse({
-    type: UserResponseDto,
-    isArray: true,
-    description: 'Successfully retrieved list of users',
-  })
+  @ApiOkData(UserResponseDto, 'Successfully retrieved list of users', true)
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden resource' })
   findAll(): Promise<UserResponseDto[]> {
@@ -81,10 +77,7 @@ export class UserController {
     description:
       'Finds a specific user by their ID. Accessible by administrators and staff.',
   })
-  @ApiOkResponse({
-    type: UserResponseDto,
-    description: 'Successfully retrieved user details',
-  })
+  @ApiOkData(UserResponseDto, 'Successfully retrieved user details')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })
@@ -101,10 +94,7 @@ export class UserController {
     summary: "Update current user's information",
     description: "Updates the currently authenticated user's own information.",
   })
-  @ApiOkResponse({
-    type: UserResponseDto,
-    description: 'Successfully updated user information',
-  })
+  @ApiOkData(UserResponseDto, 'Successfully updated user information')
   @ApiBadRequestResponse({
     description:
       'Validation failed / Current password is required or incorrect / Google accounts cannot change email or password',
@@ -124,10 +114,7 @@ export class UserController {
     description:
       "Updates another user's role by their ID. Only accessible by administrators, who cannot change their own role.",
   })
-  @ApiOkResponse({
-    type: UserResponseDto,
-    description: "Successfully updated user's role",
-  })
+  @ApiOkData(UserResponseDto, "Successfully updated user's role")
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId or Body)',
   })
@@ -152,7 +139,7 @@ export class UserController {
       'Deletes a user account by their ID. Only accessible by administrators.',
   })
   @Roles(UserRole.ADMIN)
-  @ApiOkResponse({ description: 'User successfully deleted' })
+  @ApiOkData(MessageResponseDto, 'User successfully deleted')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })

@@ -96,14 +96,14 @@ export class ProductService {
       filter.categoryId = query.categoryId;
     }
 
-    const [data, total] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.productModel.find(filter).skip(skip).limit(itemsPerPage),
       this.productModel.countDocuments(filter),
     ]);
-    const result = data.map((element) => element.toJSON());
+    const result = items.map((element) => element.toJSON());
 
     return {
-      data: result,
+      items: result,
       meta: {
         total,
         page,

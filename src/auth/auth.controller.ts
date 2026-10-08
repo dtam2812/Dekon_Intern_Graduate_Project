@@ -21,11 +21,14 @@ import {
   ApiOperation,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
-  ApiCreatedResponse,
-  ApiOkResponse,
 } from '@nestjs/swagger';
 import { ConfirmLinkGoogleDto } from 'src/dto/confirm-link-google.dto';
 import { TokenResponseDto } from 'src/dto/token-response.dto';
+import {
+  ApiCreatedData,
+  ApiOkData,
+} from 'src/decorator/api-data-response.decorator';
+import { MessageResponseDto } from 'src/dto/message-response.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -39,10 +42,7 @@ export class AuthController {
     description:
       'Registers a new user with email and password. Assigns CUSTOMER role and LOCAL provider.',
   })
-  @ApiCreatedResponse({
-    type: TokenResponseDto,
-    description: 'User successfully registered',
-  })
+  @ApiCreatedData(TokenResponseDto, 'User successfully registered')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiConflictResponse({ description: 'This email has been used' })
   @ApiUnauthorizedResponse({ description: 'Password is required' })
@@ -61,10 +61,7 @@ export class AuthController {
     description:
       'Authenticates a user with email and password, returning access and refresh tokens.',
   })
-  @ApiOkResponse({
-    type: TokenResponseDto,
-    description: 'Successfully logged in',
-  })
+  @ApiOkData(TokenResponseDto, 'Successfully logged in')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({
     description:
@@ -84,10 +81,7 @@ export class AuthController {
     description:
       'Issues a new pair of tokens using a valid refresh token. Revokes the old token and detects token reuse.',
   })
-  @ApiCreatedResponse({
-    type: TokenResponseDto,
-    description: 'Successfully refreshed tokens',
-  })
+  @ApiCreatedData(TokenResponseDto, 'Successfully refreshed tokens')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiConflictResponse({ description: 'Invalid token' })
   refreshToken(
@@ -102,7 +96,7 @@ export class AuthController {
     summary: 'Logout',
     description: 'Revokes the provided refresh token to log the user out.',
   })
-  @ApiCreatedResponse({ description: 'Successfully logged out' })
+  @ApiCreatedData(MessageResponseDto, 'Successfully logged out')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   logOut(@Body() dto: RefreshTokenDto) {
@@ -116,7 +110,7 @@ export class AuthController {
     description:
       'Retrieves the profile information of the currently authenticated user.',
   })
-  @ApiOkResponse({ description: 'Successfully retrieved profile' })
+  @ApiOkData(MessageResponseDto, 'Successfully retrieved profile')
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   getProfile(@Req() req: any) {
     return req.user;
@@ -142,7 +136,7 @@ export class AuthController {
     description:
       'Handles the callback from Google OAuth2. Creates a new user or issues a pending link token if the email already exists locally.',
   })
-  @ApiOkResponse({ description: 'Successfully authenticated with Google' })
+  @ApiOkData(MessageResponseDto, 'Successfully authenticated with Google')
   @ApiUnauthorizedResponse({ description: 'User not found' })
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any) {
@@ -157,7 +151,7 @@ export class AuthController {
     description:
       'Confirms linking a Google account to an existing local account using a pending link token and the local account password.',
   })
-  @ApiCreatedResponse({ description: 'Successfully linked Google account' })
+  @ApiCreatedData(MessageResponseDto, 'Successfully linked Google account')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({
     description:

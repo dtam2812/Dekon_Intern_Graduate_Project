@@ -35,7 +35,6 @@ import {
   ApiExtraModels,
   ApiOperation,
   getSchemaPath,
-  ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
@@ -43,6 +42,12 @@ import {
   ApiConflictResponse,
   ApiOkResponse,
 } from '@nestjs/swagger';
+import {
+  ApiCreatedData,
+  ApiOkData,
+  ApiPaginatedData,
+} from 'src/decorator/api-data-response.decorator';
+import { MessageResponseDto } from 'src/dto/message-response.dto';
 
 @Controller('product')
 export class ProductController {
@@ -55,10 +60,7 @@ export class ProductController {
     description:
       'Creates a new product. Requires 1-5 images. Only accessible by administrators.',
   })
-  @ApiCreatedResponse({
-    type: Product,
-    description: 'Product successfully created',
-  })
+  @ApiCreatedData(Product, 'Product successfully created')
   @ApiBadRequestResponse({
     description:
       'Validation failed / Product must have images / Only accept images with .jpg, .jpeg, .png',
@@ -119,27 +121,11 @@ export class ProductController {
 
   @Public()
   @Get()
-  @ApiExtraModels(PaginatedResponseDto)
+  @ApiPaginatedData(Product, 'Successfully retrieved products')
   @ApiOperation({
     summary: 'Get all products',
     description:
       'Retrieves a paginated list of all products with optional filters.',
-  })
-  @ApiOkResponse({
-    description: 'Successfully retrieved products',
-    schema: {
-      allOf: [
-        { $ref: getSchemaPath(PaginatedResponseDto) },
-        {
-          properties: {
-            data: {
-              type: 'array',
-              items: { $ref: getSchemaPath(Product) },
-            },
-          },
-        },
-      ],
-    },
   })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   findAll(@Query() query: FilterProductDto): Promise<any> {
@@ -152,10 +138,7 @@ export class ProductController {
     summary: 'Find product by id',
     description: 'Finds a specific product by its ID.',
   })
-  @ApiOkResponse({
-    type: Product,
-    description: 'Successfully retrieved product details',
-  })
+  @ApiOkData(Product, 'Successfully retrieved product details')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })
@@ -172,7 +155,7 @@ export class ProductController {
     description:
       "Updates a product's information and/or images by its ID. Only accessible by administrators.",
   })
-  @ApiOkResponse({ type: Product, description: 'Successfully updated product' })
+  @ApiOkData(Product, 'Successfully updated product')
   @ApiBadRequestResponse({
     description:
       'Validation failed / Only accept images with .jpg, .jpeg, .png',
@@ -243,7 +226,7 @@ export class ProductController {
     description:
       'Deletes a product by its ID. Only accessible by administrators.',
   })
-  @ApiOkResponse({ description: 'Product successfully deleted' })
+  @ApiOkData(MessageResponseDto, 'Product successfully deleted')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })

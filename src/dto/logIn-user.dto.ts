@@ -19,7 +19,6 @@ export class LogInUserDto {
     format: 'password',
     description: 'Password',
     example: 'nguyen12345',
-    minLength: 6,
   })
   @IsString()
   @IsNotEmpty({ message: 'Password must be filled' })

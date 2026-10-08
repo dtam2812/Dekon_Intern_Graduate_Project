@@ -20,7 +20,6 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiOkResponse,
-  ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
@@ -31,6 +30,11 @@ import {
 } from '@nestjs/swagger';
 import { PaginatedResponseDto } from 'src/dto/paginated-response.dto';
 import { ConfirmOrderTokenDto } from 'src/dto/confirm-order-token.dto';
+import {
+  ApiCreatedData,
+  ApiOkData,
+  ApiPaginatedData,
+} from 'src/decorator/api-data-response.decorator';
 
 @Controller('order')
 export class OrderController {
@@ -43,10 +47,7 @@ export class OrderController {
     description:
       'Creates a new order for the current user. Validates product stock and deducts stock upon creation. Sends a confirmation email.',
   })
-  @ApiCreatedResponse({
-    type: Order,
-    description: 'Order successfully created',
-  })
+  @ApiCreatedData(Order, 'Order successfully created')
   @ApiBadRequestResponse({
     description:
       'Validation failed / Insufficient stock for product / This product is out of stock',
@@ -64,10 +65,7 @@ export class OrderController {
       "Customers confirm their orders, get token on the browser's searching bar",
     description: 'Confirms an order using a verification token sent via email.',
   })
-  @ApiCreatedResponse({
-    type: Order,
-    description: 'Order successfully confirmed',
-  })
+  @ApiCreatedData(Order, 'Order successfully confirmed')
   @ApiBadRequestResponse({
     description: 'Invalid or expired token / Validation failed',
   })
@@ -87,10 +85,7 @@ export class OrderController {
     description:
       'Cancels an order using a verification token sent via email. Restores product stock.',
   })
-  @ApiCreatedResponse({
-    type: Order,
-    description: 'Order successfully cancelled',
-  })
+  @ApiCreatedData(Order, 'Order successfully cancelled')
   @ApiBadRequestResponse({
     description: 'Invalid or expired token / Validation failed',
   })
@@ -105,28 +100,12 @@ export class OrderController {
   @Get()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @ApiBearerAuth()
-  @ApiExtraModels(PaginatedResponseDto)
   @ApiOperation({
     summary: 'Get all orders, admin and staff only',
     description:
       'Retrieves a paginated list of all orders with optional filters. Only accessible by administrators and staff.',
   })
-  @ApiOkResponse({
-    description: 'Successfully retrieved list of orders',
-    schema: {
-      allOf: [
-        { $ref: getSchemaPath(PaginatedResponseDto) },
-        {
-          properties: {
-            data: {
-              type: 'array',
-              items: { $ref: getSchemaPath(Order) },
-            },
-          },
-        },
-      ],
-    },
-  })
+  @ApiPaginatedData(Order, 'Successfully retrieved list of orders')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden resource' })
@@ -141,11 +120,7 @@ export class OrderController {
     description:
       'Retrieves all orders placed by the currently authenticated user.',
   })
-  @ApiOkResponse({
-    type: Order,
-    isArray: true,
-    description: 'Successfully retrieved user orders',
-  })
+  @ApiOkData(Order, 'Successfully retrieved user orders', true)
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   findOrdersByCustomer(@Req() req: any): Promise<Order[]> {
     return this.orderService.findOrdersByCustomer(req.user.sub);
@@ -158,10 +133,7 @@ export class OrderController {
     description:
       'Finds a specific order by its ID. Users can only access their own orders, while administrators and staff can access any order.',
   })
-  @ApiOkResponse({
-    type: Order,
-    description: 'Successfully retrieved order details',
-  })
+  @ApiOkData(Order, 'Successfully retrieved order details')
   @ApiBadRequestResponse({
     description: 'Validation failed (Invalid ObjectId)',
   })
@@ -188,10 +160,7 @@ export class OrderController {
     description:
       'Updates the payment status of an order to PAID. Only accessible by administrators and staff.',
   })
-  @ApiOkResponse({
-    type: Order,
-    description: 'Successfully updated payment status',
-  })
+  @ApiOkData(Order, 'Successfully updated payment status')
   @ApiBadRequestResponse({
     description:
       'Cannot update payment status for a cancelled order / Order is already marked as paid / Validation failed',
@@ -216,10 +185,7 @@ export class OrderController {
     description:
       'Updates the status of an order (e.g., PENDING -> CONFIRMED). Validates status transitions. Only accessible by administrators and staff.',
   })
-  @ApiOkResponse({
-    type: Order,
-    description: 'Successfully updated order status',
-  })
+  @ApiOkData(Order, 'Successfully updated order status')
   @ApiBadRequestResponse({
     description:
       'Cannot change order status from current to new status / Validation failed',
@@ -250,10 +216,7 @@ export class OrderController {
     description:
       'Updates the shipping address of an order. Only allowed if the order is PENDING or CONFIRMED.',
   })
-  @ApiOkResponse({
-    type: Order,
-    description: 'Successfully updated shipping address',
-  })
+  @ApiOkData(Order, 'Successfully updated shipping address')
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Order not found' })
