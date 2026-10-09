@@ -75,7 +75,7 @@ async function bootstrap() {
 3. Click the **Authorize**  button at top-right of this page.
 4. Paste the token into the Value field and click **Authorize**.
 5. Test any Admin / Staff / Customer endpoints.
-6. *(Optional)* Open Web GUI at \`http://localhost:8081\` (Mongo Express) to inspect live collections and documents.
+6. *(Optional)* Open Web GUI at \`http://localhost:8081\` (Mongo Express) to inspect live collections and documents (For local docker set up only).
 
 **Note:** The seed accounts above use fake email addresses, so you will not receive emails from the Order module with them. To receive order emails, register a new account with your own email via \`GET /auth/google\` or \`POST /auth/register\`, then place an order with that account.
 `,
