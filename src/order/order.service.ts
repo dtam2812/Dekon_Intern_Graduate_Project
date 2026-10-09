@@ -624,7 +624,7 @@ export class OrderService {
       order.status !== OrderStatus.CONFIRMED
     ) {
       throw new ConflictException(
-        'Order is being shipped, shipping address cannot be changed',
+        'Order is being shipped or cancelled, shipping address cannot be changed',
       );
     }
 

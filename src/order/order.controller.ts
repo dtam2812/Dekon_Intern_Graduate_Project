@@ -228,7 +228,8 @@ export class OrderController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Order not found' })
   @ApiConflictResponse({
-    description: 'Order is being shipped, shipping address cannot be changed',
+    description:
+      'Order is being shipped or cancelled, shipping address cannot be changed',
   })
   updateShippingAddress(
     @Param('id', ValidateObjectIdPipe) orderId: string,
