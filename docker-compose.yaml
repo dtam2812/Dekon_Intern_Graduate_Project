@@ -1,21 +1,97 @@
 services:
+  mongo:
+    image: mongo:7.0
+    container_name: dekon-mongodb
+    restart: unless-stopped
+    command: ['--replSet', 'rs0', '--bind_ip_all', '--port', '27017']
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --port
+        - '27017'
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 2s
+
+  mongo-init:
+    image: mongo:7.0
+    container_name: dekon-mongo-init
+    restart: 'no'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./seed-dump:/seed-dump:ro
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo "Waiting for MongoDB primary..."
+        until mongosh "mongodb://mongo:27017/?replicaSet=rs0" --quiet --eval "db.hello().isWritablePrimary" | grep -q true; do
+          sleep 1
+        done
+        COUNT=$$(mongosh "mongodb://mongo:27017/ecommerce_api_application?replicaSet=rs0" --quiet --eval "db.products.countDocuments()")
+        if [ "$$COUNT" -eq "0" ]; then
+          echo "Restoring seed-dump..."
+          mongorestore --uri="mongodb://mongo:27017/?replicaSet=rs0" /seed-dump
+          echo "Seed restored!"
+        else
+          echo "Already initialized ($$COUNT products). Skipping."
+        fi
+
   api:
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     build:
       context: .
       dockerfile: Dockerfile
     container_name: dekon-ecommerce-api
     restart: unless-stopped
-    env_file:
-      - .env
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
     environment:
-      - LOG_PRETTY=false
-      - PORT=3000
+      LOG_PRETTY: 'false'
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/ecommerce_api_application?replicaSet=rs0&directConnection=true
+      SESSION_SECRET: ${SESSION_SECRET:-demo-session-secret}
+      JWT_SECRET: ${JWT_SECRET:-demo-jwt-secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TOKEN_EXPIRES_DAYS: ${REFRESH_TOKEN_EXPIRES_DAYS:-7}
+      ORDER_TOKEN_SECRET: ${ORDER_TOKEN_SECRET:-demo-order-token-secret}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id.apps.googleusercontent.com}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/google/callback}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-dummy@example.com}
+      SMTP_PASS: ${SMTP_PASS:-dummy-app-password}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@example.com}
+      SHOP_NAME: ${SHOP_NAME:-My Shop}
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     volumes:
-      - uploads:/app/uploads
+      - ./uploads:/app/uploads
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: dekon-mongo-express
+    restart: unless-stopped
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/ecommerce_api_application?replicaSet=rs0&directConnection=true
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'false'
+      ME_CONFIG_BASICAUTH: 'false'
+
 volumes:
-  uploads:
+  mongo_data:

@@ -3,7 +3,7 @@ import { CreateRefreshTokenDto } from 'src/dto/create-refreshToken.dto';
 
 @Injectable()
 export class RefreshTokenService {
-  create(createRefreshTokenDto: CreateRefreshTokenDto) {
+  create(_createRefreshTokenDto: CreateRefreshTokenDto) {
     return 'This action adds a new refreshToken';
   }
 
@@ -15,7 +15,7 @@ export class RefreshTokenService {
     return `This action returns a #${id} refreshToken`;
   }
 
-  update(id: number, updateRefreshTokenDto: CreateRefreshTokenDto) {
+  update(id: number, _updateRefreshTokenDto: CreateRefreshTokenDto) {
     return `This action updates a #${id} refreshToken`;
   }
 

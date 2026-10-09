@@ -115,7 +115,7 @@ export class AuthController {
   })
   @ApiOkData(ProfileResponseDto, 'Successfully retrieved profile')
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  getProfile(@Req() req: any) {
+  getProfile(@Req() req: { user: unknown }) {
     return req.user;
   }
 
@@ -145,7 +145,9 @@ export class AuthController {
   )
   @ApiUnauthorizedResponse({ description: 'Google authentication failed' })
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Req() req: any) {
+  async googleAuthCallback(
+    @Req() req: { user: { fullName: string; email: string } },
+  ) {
     return this.authService.googleLogin(req.user);
   }
 

@@ -24,7 +24,6 @@ import { Product } from 'src/schemas/product.schema';
 import { storageConfig } from 'src/helpers/config';
 import { extname } from 'path';
 import { FilterProductDto } from 'src/dto/filter-product.dto';
-import { PaginatedResponseDto } from 'src/dto/paginated-response.dto';
 import { CleanupUploadedFilesFilter } from 'src/filter/cleanup-uploaded-files.filter';
 import { ValidateImageFilesPipe } from 'src/pipe/validate-image-file.pipe';
 import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
@@ -40,7 +39,6 @@ import {
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiConflictResponse,
-  ApiOkResponse,
 } from '@nestjs/swagger';
 import {
   ApiCreatedData,
@@ -48,6 +46,13 @@ import {
   ApiPaginatedData,
 } from 'src/decorator/api-data-response.decorator';
 import { MessageResponseDto } from 'src/dto/message-response.dto';
+
+interface RequestWithUser {
+  user: {
+    sub: string;
+    [key: string]: unknown;
+  };
+}
 
 @Controller('product')
 export class ProductController {
@@ -112,7 +117,7 @@ export class ProductController {
   create(
     @Body() createProductDto: CreateProductDto,
     @UploadedFiles(ValidateImageFilesPipe) files: Express.Multer.File[],
-    @Req() req,
+    @Req() req: RequestWithUser,
   ): Promise<Product> {
     if (!files?.length)
       throw new BadRequestException('Product must have images');
@@ -208,7 +213,7 @@ export class ProductController {
     @Param('id', ValidateObjectIdPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
     @UploadedFiles(ValidateImageFilesPipe) files: Express.Multer.File[],
-    @Req() req,
+    @Req() req: RequestWithUser,
   ): Promise<Product> {
     return this.productService.update(
       id,

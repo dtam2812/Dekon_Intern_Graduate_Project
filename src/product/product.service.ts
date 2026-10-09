@@ -66,14 +66,19 @@ export class ProductService {
         `Product ${product._id.toString()} created by user ${id}`,
       );
       return product.toJSON();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.warn(
         `Product creation by user ${id} failed, removing ${fileUrls.length} uploaded file(s)`,
       );
       await this.removeFiles(fileUrls);
-      if (error.code === 11000) {
-        const field =
-          Object.keys(error.keyPattern ?? error.keyValue ?? {})[0] ?? 'value';
+      const mongoError = error as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+        keyValue?: Record<string, unknown>;
+      };
+      if (mongoError.code === 11000) {
+        const pattern = mongoError.keyPattern ?? mongoError.keyValue ?? {};
+        const field = Object.keys(pattern)[0] ?? 'value';
         this.logger.warn(`Product creation conflict: duplicate ${field}`);
         throw new ConflictException(`This ${field} existed`);
       }
@@ -153,12 +158,12 @@ export class ProductService {
 
     if (files?.length && !existing) {
       this.logger.warn(`Update failed: product ${id} not found`);
-      await this.removeFiles(files.map((f) => `uploads/images/${f.filename}`));
+      await this.removeFiles(newImageUrls);
       throw new NotFoundException('Product not found');
     }
-    const set: Record<string, any> = { ...dto };
+    const set: Record<string, unknown> = { ...dto };
     if (files?.length) {
-      set.images = files.map((f) => `uploads/images/${f.filename}`);
+      set.images = newImageUrls;
     }
 
     const update: UpdateQuery<ProductDocument> = { $set: set };
@@ -180,7 +185,7 @@ export class ProductService {
       if (!product) {
         this.logger.warn(`Update failed: product ${id} not found`);
         if (files?.length) {
-          await this.removeFiles(set.images);
+          await this.removeFiles(newImageUrls);
         }
         throw new NotFoundException('Product not found');
       }
@@ -195,13 +200,18 @@ export class ProductService {
         );
       }
       return product.toJSON();
-    } catch (error) {
+    } catch (error: unknown) {
       if (files?.length && !(error instanceof NotFoundException)) {
-        await this.removeFiles(set.images);
+        await this.removeFiles(newImageUrls);
       }
-      if (error.code === 11000) {
-        const field =
-          Object.keys(error.keyPattern ?? error.keyValue ?? {})[0] ?? 'value';
+      const mongoError = error as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+        keyValue?: Record<string, unknown>;
+      };
+      if (mongoError.code === 11000) {
+        const pattern = mongoError.keyPattern ?? mongoError.keyValue ?? {};
+        const field = Object.keys(pattern)[0] ?? 'value';
         this.logger.warn(
           `Product update conflict on ${id}: duplicate ${field}`,
         );

@@ -56,8 +56,14 @@ const usePrettyLogs =
           : undefined,
 
         serializers: {
-          req: (req) => ({ id: req.id, method: req.method, url: req.url }),
-          res: (res) => ({ statusCode: res.statusCode }),
+          req: (req: { id?: unknown; method?: unknown; url?: unknown }) => ({
+            id: req.id,
+            method: req.method,
+            url: req.url,
+          }),
+          res: (res: { statusCode?: unknown }) => ({
+            statusCode: res.statusCode,
+          }),
         },
 
         redact: ['req.headers.authorization', 'req.headers.cookie'],

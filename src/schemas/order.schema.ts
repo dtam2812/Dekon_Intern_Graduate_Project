@@ -20,20 +20,21 @@ export class Order {
   @Prop({ required: true })
   total!: number;
   @Prop({
+    type: String,
     required: true,
     enum: OrderStatus,
   })
-  status!: string;
+  status!: OrderStatus;
   @Prop({ required: true })
   shippingAddress!: ShippingAddress;
-  @Prop({ required: true, enum: PaymentMethod })
-  paymentMethod!: string;
+  @Prop({ type: String, required: true, enum: PaymentMethod })
+  paymentMethod!: PaymentMethod;
   @Prop({ required: true })
   receiverName!: string;
   @Prop({ required: true })
   receiverPhone!: string;
-  @Prop({ required: true, enum: PaymentStatus })
-  paymentStatus!: string;
+  @Prop({ type: String, required: true, enum: PaymentStatus })
+  paymentStatus!: PaymentStatus;
   @Prop({ type: [OrderItem], required: true })
   orderItems!: OrderItem[];
   @Prop({ type: [OrderStatusHistory], required: true })

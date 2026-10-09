@@ -52,8 +52,9 @@ export class UserService {
       );
 
       return user.toJSON() as UserResponseDto;
-    } catch (error) {
-      if (error.code === 11000) {
+    } catch (error: unknown) {
+      const mongoError = error as { code?: number };
+      if (mongoError.code === 11000) {
         this.logger.warn('User creation failed: duplicate email (index)');
         throw new ConflictException('This email has been used');
       }
@@ -143,8 +144,9 @@ export class UserService {
 
       this.logger.log(`User ${id} updated their own information`);
       return updated.toJSON() as UserResponseDto;
-    } catch (error: any) {
-      if (error?.code === 11000) {
+    } catch (error: unknown) {
+      const mongoError = error as { code?: number };
+      if (mongoError?.code === 11000) {
         throw new ConflictException('Email already in use');
       }
       throw error;

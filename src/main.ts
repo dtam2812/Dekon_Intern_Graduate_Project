@@ -8,6 +8,7 @@ import { CatchEverythingFilter } from './filter/catch.filter';
 import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -16,6 +17,10 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   app.enableCors();
+
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   app.use(
     session({
@@ -55,9 +60,24 @@ async function bootstrap() {
     .setDescription(
       `Backend API for a sales website (internship project at DEKON).
 
-**Roles:** Guest, Customer, Staff (update order status/payment), Admin (full rights, manages products).
+###  Demo Accounts for Reviewer:
+* **Admin** (Full permissions: Products, Categories, Users):
+  * **Email:** \`admin@dekon.com\` | **Password:** \`Admin@123456\`
+* **Staff** (Order management, Payment status, View users):
+  * **Email:** \`staff@dekon.com\` | **Password:** \`Staff@123456\`
+* **Customer** (Place orders, Manage profile):
+  * **Email:** \`customer@dekon.com\` | **Password:** \`Customer@123456\`
 
-**Authentication:** call \`POST /auth/login\` or \`GET /auth/google\`, copy the access token, click **Authorize** and paste it. Use the refresh token endpoint when the access token expires.
+---
+###  How to Authenticate & Test:
+1. Scroll down to **Auth** -> **\`POST /auth/login\`** -> Click **Try it out** -> Click **Execute** (pre-filled with Admin account).
+2. Copy the \`accessToken\` from the response JSON.
+3. Click the **Authorize**  button at top-right of this page.
+4. Paste the token into the Value field and click **Authorize**.
+5. Test any Admin / Staff / Customer endpoints.
+6. *(Optional)* Open Web GUI at \`http://localhost:8081\` (Mongo Express) to inspect live collections and documents.
+
+**Note:** The seed accounts above use fake email addresses, so you will not receive emails from the Order module with them. To receive order emails, register a new account with your own email via \`GET /auth/google\` or \`POST /auth/register\`, then place an order with that account.
 `,
     )
     .setVersion('1.0')
@@ -86,4 +106,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();

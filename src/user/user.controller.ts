@@ -102,7 +102,10 @@ export class UserController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
   @ApiConflictResponse({ description: 'Email already in use' })
-  update(@Req() req: any, @Body() updateUserDto: UpdateUserDto) {
+  update(
+    @Req() req: { user: { sub: string } },
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.userService.update(req.user.sub, updateUserDto);
   }
 
@@ -126,7 +129,7 @@ export class UserController {
   updateAdmin(
     @Param('id', ValidateObjectIdPipe) id: string,
     @Body() updateUserDto: UpdateUserAdminDto,
-    @Req() req: any,
+    @Req() req: { user: { sub: string } },
   ) {
     return this.userService.updateAdmin(id, updateUserDto, req.user.sub);
   }

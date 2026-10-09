@@ -25,10 +25,15 @@ export class CategoryService {
       });
       this.logger.log(`Category ${category._id.toString()} created`);
       return category.toJSON();
-    } catch (err) {
-      if (err.code === 11000) {
-        const field =
-          Object.keys(err.keyPattern ?? err.keyValue ?? {})[0] ?? 'value';
+    } catch (err: unknown) {
+      const mongoError = err as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+        keyValue?: Record<string, unknown>;
+      };
+      if (mongoError.code === 11000) {
+        const pattern = mongoError.keyPattern ?? mongoError.keyValue ?? {};
+        const field = Object.keys(pattern)[0] ?? 'value';
         this.logger.warn(`Category creation conflict: duplicate ${field}`);
         throw new ConflictException(`This ${field} existed`);
       }
@@ -62,10 +67,15 @@ export class CategoryService {
       }
       this.logger.log(`Category ${id} updated`);
       return cate.toJSON();
-    } catch (err) {
-      if (err.code === 11000) {
-        const field =
-          Object.keys(err.keyPattern ?? err.keyValue ?? {})[0] ?? 'value';
+    } catch (err: unknown) {
+      const mongoError = err as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+        keyValue?: Record<string, unknown>;
+      };
+      if (mongoError.code === 11000) {
+        const pattern = mongoError.keyPattern ?? mongoError.keyValue ?? {};
+        const field = Object.keys(pattern)[0] ?? 'value';
         this.logger.warn(
           `Category update conflict on ${id}: duplicate ${field}`,
         );

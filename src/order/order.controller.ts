@@ -19,22 +19,26 @@ import { ValidateObjectIdPipe } from 'src/pipe/validate-object-id.pipe';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiOkResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiConflictResponse,
-  ApiExtraModels,
-  getSchemaPath,
 } from '@nestjs/swagger';
-import { PaginatedResponseDto } from 'src/dto/paginated-response.dto';
 import { ConfirmOrderTokenDto } from 'src/dto/confirm-order-token.dto';
 import {
   ApiCreatedData,
   ApiOkData,
   ApiPaginatedData,
 } from 'src/decorator/api-data-response.decorator';
+
+interface RequestWithUser {
+  user: {
+    sub: string;
+    role: UserRole;
+    userId?: string;
+  };
+}
 
 @Controller('order')
 export class OrderController {
@@ -54,7 +58,10 @@ export class OrderController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Product not found' })
-  create(@Req() req, @Body() createOrderDto: CreateOrderDto): Promise<Order> {
+  create(
+    @Req() req: RequestWithUser,
+    @Body() createOrderDto: CreateOrderDto,
+  ): Promise<Order> {
     return this.orderService.create(req.user.sub, createOrderDto);
   }
 
@@ -122,7 +129,7 @@ export class OrderController {
   })
   @ApiOkData(Order, 'Successfully retrieved user orders', true)
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  findOrdersByCustomer(@Req() req: any): Promise<Order[]> {
+  findOrdersByCustomer(@Req() req: RequestWithUser): Promise<Order[]> {
     return this.orderService.findOrdersByCustomer(req.user.sub);
   }
 
@@ -144,7 +151,7 @@ export class OrderController {
   @ApiNotFoundResponse({ description: 'Order not found' })
   findOne(
     @Param('id', ValidateObjectIdPipe) id: string,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<Order> {
     return this.orderService.findOne(id, {
       userId: req.user.sub,
@@ -172,7 +179,7 @@ export class OrderController {
   @ApiNotFoundResponse({ description: 'Order not found' })
   updatePaymentStatus(
     @Param('id', ValidateObjectIdPipe) id: string,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<Order> {
     return this.orderService.updatePaymentStatus(id, req.user);
   }
@@ -200,7 +207,7 @@ export class OrderController {
   updateOrderStatus(
     @Param('id', ValidateObjectIdPipe) orderId: string,
     @Body() updateOrderStatus: UpdateOrderStatusDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<Order> {
     return this.orderService.updateOrderStatus(
       orderId,
@@ -226,7 +233,7 @@ export class OrderController {
   updateShippingAddress(
     @Param('id', ValidateObjectIdPipe) orderId: string,
     @Body() shippingAddressDto: ShippingAddressDto,
-    @Req() req: any,
+    @Req() req: RequestWithUser,
   ): Promise<Order> {
     return this.orderService.updateShippingAddress(
       orderId,

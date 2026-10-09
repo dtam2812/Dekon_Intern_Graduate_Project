@@ -5,7 +5,7 @@ export class LogInUserDto {
   @ApiProperty({
     type: String,
     description: 'Email used to log in',
-    example: 'nguyenductam@example.com',
+    example: 'admin@dekon.com',
     format: 'email',
     maxLength: 50,
   })
@@ -18,7 +18,7 @@ export class LogInUserDto {
     type: String,
     format: 'password',
     description: 'Password',
-    example: 'nguyen12345',
+    example: 'Admin@123456',
   })
   @IsString()
   @IsNotEmpty({ message: 'Password must be filled' })

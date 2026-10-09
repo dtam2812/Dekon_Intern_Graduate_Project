@@ -9,8 +9,8 @@ export type UserDocument = HydratedDocument<User>;
 @Schema({
   toJSON: {
     ...toJSONTransform,
-    transform: (doc: any, ret: any) => {
-      toJSONTransform.transform(doc, ret);
+    transform: (_doc: unknown, ret: Record<string, unknown>) => {
+      toJSONTransform.transform(_doc, ret);
       delete ret.password;
       return ret;
     },
@@ -27,8 +27,8 @@ export class User {
   password?: string;
   @Prop({ required: true })
   role!: string;
-  @Prop({ required: true, enum: AuthProvider })
-  provider!: string;
+  @Prop({ type: String, required: true, enum: AuthProvider })
+  provider!: AuthProvider;
   @Prop()
   providerId?: string;
 }

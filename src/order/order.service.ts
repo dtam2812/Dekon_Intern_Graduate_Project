@@ -439,11 +439,12 @@ export class OrderService {
 
   async updatePaymentStatus(
     id: string,
-    requester: { userId: string; role: string },
+    requester: { userId?: string; sub?: string; role: string },
   ): Promise<Order> {
+    const actorId = requester.userId ?? requester.sub ?? 'unknown';
     if (!['staff', 'admin'].includes(requester.role)) {
       this.logger.warn(
-        `User ${requester.userId} denied payment status update on order ${id}`,
+        `User ${actorId} denied payment status update on order ${id}`,
       );
       throw new ForbiddenException('You do not have access to this order');
     }
@@ -474,7 +475,7 @@ export class OrderService {
       throw new BadRequestException('Order is already marked as paid');
     }
 
-    this.logger.log(`Order ${id} marked as paid by user ${requester.userId}`);
+    this.logger.log(`Order ${id} marked as paid by user ${actorId}`);
 
     const customer = await this.userModel
       .findById(order.userId)
