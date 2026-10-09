@@ -51,7 +51,7 @@ describe('OrderService', () => {
 
   const mockJwtService = {
     signAsync: jest.fn(),
-    verify: jest.fn(),
+    verifyAsync: jest.fn(),
   };
 
   const mockLogger = { warn: jest.fn(), log: jest.fn(), error: jest.fn() };
@@ -61,12 +61,13 @@ describe('OrderService', () => {
     endSession: jest.fn(),
   };
 
-  // find(filter).skip(n).limit(n)
+  // find(filter)sort().skip(n).limit(n)
   const mockFindChain = (value) => {
     const limit = jest.fn().mockResolvedValue(value);
     const skip = jest.fn().mockReturnValue({ limit });
-    mockOrderModel.find.mockReturnValue({ skip });
-    return { skip, limit };
+    const sort = jest.fn().mockReturnValue({ skip });
+    mockOrderModel.find.mockReturnValue({ sort });
+    return { sort, skip, limit };
   };
 
   // findById(id).populate(...).populate(...)
@@ -302,34 +303,42 @@ describe('OrderService', () => {
     it('should sign a token with the order secret and 2d expiry', async () => {
       mockJwtService.signAsync.mockResolvedValue('signed');
 
-      const result = await service['signOrderToken'](orderId, userId);
+      const result = await service['signOrderToken'](
+        orderId,
+        userId,
+        'confirm',
+      );
 
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        { orderId, userId },
+        { orderId, userId, purpose: 'confirm' },
         { secret: 'test-secret', expiresIn: '2d' },
       );
       expect(result).toBe('signed');
     });
 
     it('should return the payload of a valid token', async () => {
-      mockJwtService.verify.mockReturnValue({ orderId, userId });
+      mockJwtService.verifyAsync.mockReturnValue({
+        orderId,
+        userId,
+        purpose: 'confirm',
+      });
 
-      const result = await service['verifyOrderToken']('token');
+      const result = await service['verifyOrderToken']('token', 'confirm');
 
-      expect(mockJwtService.verify).toHaveBeenCalledWith('token', {
+      expect(mockJwtService.verifyAsync).toHaveBeenCalledWith('token', {
         secret: 'test-secret',
       });
-      expect(result).toEqual({ orderId, userId });
+      expect(result).toEqual({ orderId, userId, purpose: 'confirm' });
     });
 
     it('should throw BadRequestException if token is invalid or expired', async () => {
-      mockJwtService.verify.mockImplementation(() => {
+      mockJwtService.verifyAsync.mockImplementation(() => {
         throw new Error('jwt expired');
       });
 
-      await expect(service['verifyOrderToken']('token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service['verifyOrderToken']('token', 'confirm'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -352,7 +361,9 @@ describe('OrderService', () => {
         .mockResolvedValueOnce({ _id: 'p2', name: 'Shoe B', price: 50 });
       mockOrderModel.create.mockResolvedValue([mockOrder]);
       mockUserModel.findById.mockResolvedValue(customer);
-      mockJwtService.signAsync.mockResolvedValue('signed-token');
+      mockJwtService.signAsync
+        .mockResolvedValueOnce('confirm-token')
+        .mockResolvedValueOnce('cancel-token');
     };
 
     it('should create an order, decrease stock and send confirmation email', async () => {
@@ -406,8 +417,13 @@ describe('OrderService', () => {
         { session: mockSession },
       );
       expect(mockSession.endSession).toHaveBeenCalledTimes(1);
+      expect(mockJwtService.signAsync).toHaveBeenCalledTimes(2);
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        { orderId, userId },
+        { orderId, userId, purpose: 'confirm' },
+        expect.any(Object),
+      );
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        { orderId, userId, purpose: 'cancel' },
         expect.any(Object),
       );
       expect(mockMailerService.sendMail).toHaveBeenCalledWith(
@@ -419,9 +435,9 @@ describe('OrderService', () => {
             name: customer.fullName,
             shopName: 'SneakShop',
             confirmLink:
-              'http://localhost:3000/orders/confirm?token=signed-token',
+              'http://localhost:3000/orders/confirm?token=confirm-token',
             cancelLink:
-              'http://localhost:3000/orders/cancel?token=signed-token',
+              'http://localhost:3000/orders/cancel?token=cancel-token',
           }),
         }),
       );
@@ -489,7 +505,11 @@ describe('OrderService', () => {
 
   describe('Confirm order', () => {
     beforeEach(() => {
-      mockJwtService.verify.mockReturnValue({ orderId, userId });
+      mockJwtService.verifyAsync.mockReturnValue({
+        orderId,
+        userId,
+        purpose: 'confirm',
+      });
     });
 
     it('should confirm a pending order and send email', async () => {
@@ -497,7 +517,7 @@ describe('OrderService', () => {
       mockOrderModel.findOneAndUpdate.mockResolvedValue(mockOrder);
       mockUserModel.findById.mockResolvedValue(customer);
 
-      const result = await service.confirmOrder('token');
+      const result = await service.confirmOrder({ token: 'token' });
 
       expect(mockOrderModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: orderId, userId, status: OrderStatus.PENDING },
@@ -515,11 +535,11 @@ describe('OrderService', () => {
     });
 
     it('should throw BadRequestException if token is invalid', async () => {
-      mockJwtService.verify.mockImplementation(() => {
+      mockJwtService.verifyAsync.mockImplementation(() => {
         throw new Error('invalid');
       });
 
-      await expect(service.confirmOrder('token')).rejects.toThrow(
+      await expect(service.confirmOrder({ token: 'token' })).rejects.toThrow(
         BadRequestException,
       );
       expect(mockOrderModel.findOneAndUpdate).not.toHaveBeenCalled();
@@ -528,7 +548,7 @@ describe('OrderService', () => {
     it('should throw NotFoundException if order not found or already processed', async () => {
       mockOrderModel.findOneAndUpdate.mockResolvedValue(null);
 
-      await expect(service.confirmOrder('token')).rejects.toThrow(
+      await expect(service.confirmOrder({ token: 'token' })).rejects.toThrow(
         NotFoundException,
       );
       expect(mockMailerService.sendMail).not.toHaveBeenCalled();
@@ -537,7 +557,11 @@ describe('OrderService', () => {
 
   describe('Cancel order', () => {
     beforeEach(() => {
-      mockJwtService.verify.mockReturnValue({ orderId, userId });
+      mockJwtService.verifyAsync.mockReturnValue({
+        orderId,
+        userId,
+        purpose: 'cancel',
+      });
     });
 
     it('should cancel a pending order, restore stock and and send email', async () => {
@@ -546,7 +570,7 @@ describe('OrderService', () => {
       mockProductModel.updateOne.mockResolvedValue({});
       mockUserModel.findById.mockResolvedValue(customer);
 
-      const result = await service.cancelOrder('token');
+      const result = await service.cancelOrder({ token: 'token' });
 
       expect(mockOrderModel.findOneAndUpdate).toHaveBeenCalledWith(
         {
@@ -576,11 +600,11 @@ describe('OrderService', () => {
     });
 
     it('should throw BadRequestException if token is invalid', async () => {
-      mockJwtService.verify.mockImplementation(() => {
+      mockJwtService.verifyAsync.mockImplementation(() => {
         throw new Error('invalid');
       });
 
-      await expect(service.cancelOrder('token')).rejects.toThrow(
+      await expect(service.cancelOrder({ token: 'token' })).rejects.toThrow(
         BadRequestException,
       );
       expect(mockOrderModel.db.startSession).not.toHaveBeenCalled();
@@ -590,7 +614,7 @@ describe('OrderService', () => {
     it('should throw NotFoundException if order not found or already processed', async () => {
       mockOrderModel.findOneAndUpdate.mockResolvedValue(null);
 
-      await expect(service.cancelOrder('token')).rejects.toThrow(
+      await expect(service.cancelOrder({ token: 'token' })).rejects.toThrow(
         NotFoundException,
       );
       expect(mockProductModel.updateOne).not.toHaveBeenCalled();
@@ -599,12 +623,13 @@ describe('OrderService', () => {
   });
   describe('Find all', () => {
     it('should return list of orders with default pagination', async () => {
-      const { skip, limit } = mockFindChain([mockOrder, mockOrder]);
+      const { sort, skip, limit } = mockFindChain([mockOrder, mockOrder]);
       mockOrderModel.countDocuments.mockResolvedValue(2);
 
       const result = await service.findAll({});
 
       expect(mockOrderModel.find).toHaveBeenCalledWith({});
+      expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
       expect(skip).toHaveBeenCalledWith(0);
       expect(limit).toHaveBeenCalledWith(10);
       expect(mockOrderModel.countDocuments).toHaveBeenCalled();
@@ -615,7 +640,7 @@ describe('OrderService', () => {
     });
 
     it('should apply search, user filter and pagination', async () => {
-      const { skip, limit } = mockFindChain([mockOrder, mockOrder]);
+      const { sort, skip, limit } = mockFindChain([mockOrder, mockOrder]);
       mockOrderModel.countDocuments.mockResolvedValue(10);
       const filter = {
         receiverName: { $regex: 'tam', $options: 'i' },
@@ -630,6 +655,7 @@ describe('OrderService', () => {
       });
 
       expect(mockOrderModel.find).toHaveBeenCalledWith(filter);
+      expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
       expect(skip).toHaveBeenCalledWith(6);
       expect(limit).toHaveBeenCalledWith(3);
       expect(mockOrderModel.countDocuments).toHaveBeenCalledWith(filter);
