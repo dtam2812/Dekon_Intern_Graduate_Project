@@ -52,7 +52,7 @@ async function bootstrap() {
 
 **Roles:** Guest, Customer, Staff (update order status/payment), Admin (full rights, manages products).
 
-**Authentication:** call \`POST /auth/login\` or \`POST /auth/google\`, copy the access token, click **Authorize** and paste it. Use the refresh token endpoint when the access token expires.
+**Authentication:** call \`POST /auth/login\` or \`GET /auth/google\`, copy the access token, click **Authorize** and paste it. Use the refresh token endpoint when the access token expires.
 `,
     )
     .setVersion('1.0')
