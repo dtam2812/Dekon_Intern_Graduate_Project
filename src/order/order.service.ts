@@ -386,7 +386,11 @@ export class OrderService {
     }
 
     const [items, total] = await Promise.all([
-      this.orderModel.find(filter).skip(skip).limit(itemsPerPage),
+      this.orderModel
+        .find(filter)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(itemsPerPage),
       this.orderModel.countDocuments(filter),
     ]);
 
