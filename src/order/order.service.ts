@@ -79,22 +79,34 @@ export class OrderService {
     }
   }
 
-  private async signOrderToken(orderId: string, userId: string) {
+  private async signOrderToken(
+    orderId: string,
+    userId: string,
+    purpose: 'confirm' | 'cancel',
+  ) {
     return await this.jwtService.signAsync(
-      { orderId, userId },
+      { orderId, userId, purpose },
       { secret: process.env.ORDER_TOKEN_SECRET, expiresIn: '2d' },
     );
   }
 
-  private async verifyOrderToken(token: string) {
+  private async verifyOrderToken(token: string, purpose: 'confirm' | 'cancel') {
+    let decoded: { orderId: string; userId: string; purpose?: string };
     try {
-      return await this.jwtService.verify(token, {
+      decoded = await this.jwtService.verifyAsync(token, {
         secret: process.env.ORDER_TOKEN_SECRET,
       });
     } catch {
       this.logger.warn('Order token verification failed (invalid or expired)');
       throw new BadRequestException('Invalid or expired token');
     }
+
+    if (decoded.purpose !== purpose) {
+      this.logger.warn(`Order token purpose mismatch: expected ${purpose}`);
+      throw new BadRequestException('Invalid token');
+    }
+
+    return decoded;
   }
 
   async create(customerId: string, dto: CreateOrderDto): Promise<Order> {
@@ -196,7 +208,16 @@ export class OrderService {
     );
 
     const customer = await this.userModel.findById(customerId);
-    const token = await this.signOrderToken(order._id.toString(), customerId);
+    const confirmToken = await this.signOrderToken(
+      order._id.toString(),
+      customerId,
+      'confirm',
+    );
+    const cancelToken = await this.signOrderToken(
+      order._id.toString(),
+      customerId,
+      'cancel',
+    );
 
     await this.sendEmail({
       to: customer!.email,
@@ -206,8 +227,8 @@ export class OrderService {
         order,
         name: customer!.fullName,
         shopName: process.env.SHOP_NAME,
-        confirmLink: `${process.env.FRONTEND_URL}/orders/confirm?token=${token}`,
-        cancelLink: `${process.env.FRONTEND_URL}/orders/cancel?token=${token}`,
+        confirmLink: `${process.env.FRONTEND_URL}/orders/confirm?token=${confirmToken}`,
+        cancelLink: `${process.env.FRONTEND_URL}/orders/cancel?token=${cancelToken}`,
         expiresIn: '2 days',
       },
     });
@@ -216,7 +237,10 @@ export class OrderService {
   }
 
   async confirmOrder(dto: ConfirmOrderTokenDto): Promise<Order> {
-    const { orderId, userId } = await this.verifyOrderToken(dto.token);
+    const { orderId, userId } = await this.verifyOrderToken(
+      dto.token,
+      'confirm',
+    );
 
     const order = await this.orderModel.findOneAndUpdate(
       { _id: orderId, userId, status: OrderStatus.PENDING },
@@ -275,7 +299,10 @@ export class OrderService {
   }
 
   async cancelOrder(dto: ConfirmOrderTokenDto): Promise<Order> {
-    const { orderId, userId } = await this.verifyOrderToken(dto.token);
+    const { orderId, userId } = await this.verifyOrderToken(
+      dto.token,
+      'cancel',
+    );
     const session = await this.orderModel.db.startSession();
     let order: OrderDocument | null = null;
 
