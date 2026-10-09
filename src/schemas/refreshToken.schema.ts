@@ -13,7 +13,7 @@ export class RefreshToken {
   familyId!: string;
   @Prop({ required: true })
   revoked!: boolean;
-  @Prop({ required: true })
+  @Prop({ required: true, expires: 0 })
   expiresAt!: Date;
 }
 
