@@ -51,8 +51,12 @@ export class CreateProductDto {
     example: 1000000,
   })
   @Transform(
-    ({ value }) =>
-      typeof value === 'string' && value.trim() === '' ? NaN : Number(value),
+    ({ value }) => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string' && value.trim() !== '')
+        return Number(value);
+      return NaN;
+    },
     { toClassOnly: true },
   )
   @IsNumber()
@@ -65,8 +69,12 @@ export class CreateProductDto {
     example: 57,
   })
   @Transform(
-    ({ value }) =>
-      typeof value === 'string' && value.trim() === '' ? NaN : Number(value),
+    ({ value }) => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string' && value.trim() !== '')
+        return Number(value);
+      return NaN;
+    },
     { toClassOnly: true },
   )
   @IsNumber()
