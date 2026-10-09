@@ -7,9 +7,14 @@ import { TransformInterceptor } from './interceptor/transform.interceptor';
 import { CatchEverythingFilter } from './filter/catch.filter';
 import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+  app.set('trust proxy', 1);
+
   app.enableCors();
 
   app.use(

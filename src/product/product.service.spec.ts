@@ -32,12 +32,13 @@ describe('ProductService', () => {
 
   const mockLogger = { warn: jest.fn(), log: jest.fn() };
 
-  // find(filter).skip(n).limit(n)
+  // find(filter).sort().skip(n).limit(n)
   const mockFindChain = (value) => {
     const limit = jest.fn().mockResolvedValue(value);
     const skip = jest.fn().mockReturnValue({ limit });
-    mockProductModel.find.mockReturnValue({ skip });
-    return { skip, limit };
+    const sort = jest.fn().mockReturnValue({ skip });
+    mockProductModel.find.mockReturnValue({ sort });
+    return { sort, skip, limit };
   };
 
   // findById(id).populate(...).populate(...)
@@ -229,12 +230,13 @@ describe('ProductService', () => {
 
   describe('Find all', () => {
     it('should return list of products with default pagination', async () => {
-      const { skip, limit } = mockFindChain([mockProduct, mockProduct]);
+      const { sort, skip, limit } = mockFindChain([mockProduct, mockProduct]);
       mockProductModel.countDocuments.mockResolvedValue(2);
 
       const result = await service.findAll({});
 
       expect(mockProductModel.find).toHaveBeenCalledWith({});
+      expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
       expect(skip).toHaveBeenCalledWith(0);
       expect(limit).toHaveBeenCalledWith(10);
       expect(mockProductModel.countDocuments).toHaveBeenCalled();
@@ -245,7 +247,7 @@ describe('ProductService', () => {
     });
 
     it('should apply search, category filter and pagination', async () => {
-      const { skip, limit } = mockFindChain([mockProduct, mockProduct]);
+      const { sort, skip, limit } = mockFindChain([mockProduct, mockProduct]);
       mockProductModel.countDocuments.mockResolvedValue(10);
       const filter = {
         name: { $regex: 'jeans', $options: 'i' },
@@ -260,6 +262,7 @@ describe('ProductService', () => {
       });
 
       expect(mockProductModel.find).toHaveBeenCalledWith(filter);
+      expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
       expect(skip).toHaveBeenCalledWith(6);
       expect(limit).toHaveBeenCalledWith(3);
       expect(mockProductModel.countDocuments).toHaveBeenCalledWith(filter);

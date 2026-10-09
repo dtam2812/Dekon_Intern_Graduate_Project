@@ -97,7 +97,11 @@ export class ProductService {
     }
 
     const [items, total] = await Promise.all([
-      this.productModel.find(filter).skip(skip).limit(itemsPerPage),
+      this.productModel
+        .find(filter)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(itemsPerPage),
       this.productModel.countDocuments(filter),
     ]);
     const result = items.map((element) => element.toJSON());
